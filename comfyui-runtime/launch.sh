@@ -23,13 +23,14 @@ source venv/bin/activate
 PORT="${PORT:-8188}"
 LISTEN="${LISTEN:-127.0.0.1}"
 MODE="${1:-low}"  # low | novram
+COMFYUI_RESERVE_VRAM="${COMFYUI_RESERVE_VRAM:-0.5}"
 
 case "$MODE" in
   novram)
     VRAM_FLAGS=(--novram)
     ;;
   low|*)
-    VRAM_FLAGS=(--lowvram --reserve-vram 1.0)
+    VRAM_FLAGS=(--lowvram --reserve-vram "$COMFYUI_RESERVE_VRAM")
     ;;
 esac
 
@@ -37,7 +38,7 @@ esac
 export PYTHONUNBUFFERED=1
 export HF_HUB_DISABLE_TELEMETRY=1
 export TRANSFORMERS_NO_ADVISORY_WARNINGS=1
-# Keep HF cache inside the runtime tree (not /home)
+# Keep the HF cache in this runtime by default; callers may choose another location.
 export HF_HOME="${HF_HOME:-$PWD/hf-cache}"
 export COMFYUI_PATH="${COMFYUI_PATH:-$PWD/ComfyUI}"
 
@@ -57,6 +58,5 @@ exec python ComfyUI/main.py \
   --port "$PORT" \
   --disable-pinned-memory \
   --use-sage-attention \
-  --cpu-vae \
   --fp16-vae \
   "${VRAM_FLAGS[@]}"

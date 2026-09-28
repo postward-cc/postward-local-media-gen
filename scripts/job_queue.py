@@ -133,7 +133,10 @@ def run(args: argparse.Namespace) -> int:
         jobs[job["job_id"]].update({"status": "running", "started_at": now(), "pid": os.getpid()})
         write_jobs(jobs)
         try:
-            proc = subprocess.run(args.command)
+            env = os.environ.copy()
+            env["POSTWARD_JOB_ID"] = job["job_id"]
+            env["POSTWARD_GPU_LOCK_HELD"] = "1"
+            proc = subprocess.run(args.command, env=env)
             final_status = "success" if proc.returncode == 0 else "failed"
             returncode = proc.returncode
         except KeyboardInterrupt:

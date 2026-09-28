@@ -2,17 +2,52 @@
   "name": "postward-local-media-gen",
   "version": "0.1.0",
   "display_name": "Postward Local Media Generation",
-  "description": "Hardware-aware local image and video generation for Postward users.",
+  "description": "Hardware-aware local image, speech and video generation for Postward users.",
   "entrypoint": "SKILL.md",
   "install": "./bootstrap.sh",
   "doctor": "python scripts/doctor.py",
   "queue": "python scripts/job_queue.py",
   "supported_media": ["image", "video", "audio", "upscale"],
   "local_adapters": [
-    "Stable Diffusion WebUI Forge",
+    "Stable Diffusion WebUI Forge (txt2img, img2img, masked inpaint)",
     "ComfyUI MiniMax H3",
+    "VibeVoice 1.5B HF (local TTS)",
     "NVIDIA RTX Video Super Resolution"
   ],
+  "image_generation": {
+    "adapter": "forge_runtime",
+    "install": "existing-forge-install-required",
+    "operations": ["txt2img", "img2img", "inpaint"],
+    "queue_command": "python scripts/forge_job.py",
+    "mask_semantics": "white=editable, black=protected",
+    "remote_uploads": false,
+    "model_downloads": false,
+    "gpu_lock": "comfyui-runtime/state/gpu.lock",
+    "minimum_free_vram_mb_default": 4096
+  },
+  "video_generation": {
+    "adapter": "comfyui-runtime",
+    "setup": "./bootstrap.sh",
+    "model_weights": "explicit-license-gated-download",
+    "weight_command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh",
+    "workflows": ["T2V", "I2V", "R2V template", "RTX VSR"],
+    "queue_command": "python scripts/job_queue.py run",
+    "gpu_lock": "comfyui-runtime/state/gpu.lock"
+  },
+  "audio_generation": {
+    "adapter": "voice_runtime",
+    "model_id": "vibevoice/VibeVoice-1.5B-hf",
+    "install": "scripts/bootstrap_vibevoice.sh",
+    "prepare_command": "VIBEVOICE_RESEARCH_OK=1 python voice_runtime/run.py prepare",
+    "queue_command": "python scripts/vibevoice_job.py tts",
+    "model_downloads": "explicit-only",
+    "storage_default": "${XDG_DATA_HOME:-$HOME/.local/share}/postward/vibevoice",
+    "gpu_lock": "comfyui-runtime/state/gpu.lock",
+    "minimum_free_vram_mb": 5632,
+    "voice_cloning_requires_explicit_recorded_consent": true,
+    "supported_languages": ["English", "Chinese"],
+    "portuguese": "unsupported; smoke test only"
+  },
   "runtime": {
     "platform": "linux",
     "gpu": "nvidia-cuda",
@@ -22,7 +57,9 @@
   },
   "license_gate": {
     "h3_weights": "explicit-user-confirmation-required",
-    "command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh"
+    "vibevoice_model": "research-and-development-only; acknowledgement-required",
+    "command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh",
+    "vibevoice_command": "VIBEVOICE_RESEARCH_OK=1 python voice_runtime/run.py prepare"
   },
   "concurrency": {
     "gpu_inference_jobs": 1,

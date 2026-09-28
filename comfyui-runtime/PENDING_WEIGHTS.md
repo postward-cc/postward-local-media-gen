@@ -1,11 +1,12 @@
-# PENDING_WEIGHTS.md — do NOT download until UK license is confirmed
+# PENDING_WEIGHTS.md — review applicable license before downloading
 
-The MiniMax H3 Community License (revised 2026-08-26) names the United Kingdom
-as an Excluded Territory. UK users must hold a separate license before
-downloading, deploying, or offering H3 as a hosted service.
+H3 model weights require the user to review the current MiniMax H3 Community
+License and confirm that the intended use and jurisdiction are covered before
+any model download.
 
-Source: https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE
-Source: https://platform.minimax.io/docs/guides/local-deploy-h3.md
+Sources:
+- https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/LICENSE
+- https://platform.minimax.io/docs/guides/local-deploy-h3.md
 
 ## Local-ComfyUI weights needed for the T2V setup
 
@@ -24,21 +25,23 @@ Sizes verified with HTTP HEAD on 2026-09-20.
 
 - `minimax_h3_ref2va_pruned_int8_convrot.safetensors` (19.5 GB) — Ref2VA diffusion model
 
-## Disk math
+## Storage requirements
 
-| Path | Free now | After 41.4 GB download | Notes |
-|---|---:|---:|---|
-| `/home` | 71 GB | ~29 GB | Fits; leaves room for 1-2 generations (~50-200 MB each) |
-| `/` | 181 GB | 181 GB | Fallback storage if `/home` runs out |
-
-If `/home` pressure becomes a problem during large-scale runs, symlink
-`ComfyUI/models/` to a path under `/var/data/` or `/`.
-
-## What to do once license is confirmed
+The pinned T2V weights require about 41.4 GB before output files and temporary
+download data. Check available space on the filesystem containing
+`comfyui-runtime/` before download:
 
 ```bash
-cd /home/mvallebr/git/video_gen_poc/comfyui-runtime
-./fetch_h3_weights.sh   # see RUNBOOK.md for the script body
+df -h comfyui-runtime
 ```
 
-Then `./launch.sh` and load `workflows/video_minimax_h3_t2v.json` in the GUI.
+## What to do after confirming license eligibility
+
+From the repository root:
+
+```bash
+LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh
+./comfyui-runtime/launch.sh
+```
+
+Load `comfyui-runtime/workflows/video_minimax_h3_t2v.json` in ComfyUI.

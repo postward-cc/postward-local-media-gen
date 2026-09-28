@@ -6,6 +6,17 @@ One GPU inference job at a time. Multiple logical requests are accepted through
 the persistent queue. CPU-only ffmpeg work may run concurrently when resources
 allow.
 
+Forge SDXL, ComfyUI/H3 and VibeVoice share the **same** exclusive GPU lease.
+`scripts/forge_job.py` and `scripts/vibevoice_job.py` invoke
+`job_queue.py run`; do not call an inference CLI directly. The queue passes
+`POSTWARD_GPU_LOCK_HELD` and `POSTWARD_JOB_ID` only after acquiring
+`comfyui-runtime/state/gpu.lock`.
+
+Forge may run idle as an API server, but do not submit Forge, VibeVoice or H3
+inference while another GPU inference owns the lease. `job_queue.py enqueue`
+records metadata only; it is not a background dispatcher. Use the synchronous
+`run` path for actual inference.
+
 ## Lifecycle
 
 ```text

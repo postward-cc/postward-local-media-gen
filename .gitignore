@@ -54,4 +54,6 @@ comfyui-runtime/ComfyUI/custom_nodes/*/__pycache__/
 comfyui-runtime/state/
 scripts/__pycache__/
 reference/__pycache__/
+forge_runtime/outputs/
+voice_runtime/outputs/
 docs/__pycache__/

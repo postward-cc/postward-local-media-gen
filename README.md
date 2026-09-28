@@ -1,13 +1,16 @@
 # postward-local-media-gen
 
-> Local image and video generation toolkit for Postward users.
+> Local image, speech and video generation toolkit for Postward users.
 
 This repository packages the operational knowledge, workflows, scripts, and
 OMP skill needed to run local media generation on consumer NVIDIA GPUs.
 Current adapters:
 
-- **Image**: Stable Diffusion WebUI Forge / SDXL (existing local installation)
+- **Image**: local Stable Diffusion WebUI Forge / SDXL (`txt2img`, `img2img`,
+  masked inpaint); uses the existing Forge install, no image API
 - **Video**: ComfyUI + MiniMax H3 open weights
+- **Speech**: VibeVoice 1.5B-HF through Transformers; runtime and weights use
+  the XDG data location or `VIBEVOICE_HOME`
 - **Upscale**: NVIDIA RTX Video Super Resolution
 - **Agent interface**: `SKILL.md` plus hardware-aware CLI modules
 
@@ -18,13 +21,14 @@ added later on top of the stable CLI seam.
 
 ## What the skill supports
 
-- text-to-video (T2V)
-- image-to-video (I2V)
-- reference-to-video (R2V template; Ref2VA weights are separate)
+- text-to-image (Forge/SDXL)
+- image-to-image (Forge/SDXL)
+- masked inpainting (Forge/SDXL; white mask pixels are editable)
+- text-to-video (T2V), image-to-video (I2V), and reference-to-video (R2V template)
 - multi-shot narrative sequences with explicit frame provenance
+- text-to-speech and long-form speaker dialogue (VibeVoice 1.5B-HF)
 - RTX VSR upscaling
-- local image-generation coordination through a shared GPU lease
-- one GPU inference job at a time, with persistent queue state
+- one GPU inference job at a time across Forge, ComfyUI/H3 and VibeVoice
 
 ## Start here
 
@@ -47,6 +51,79 @@ The bootstrap is idempotent and does **not** download H3 weights. See
 
 `doctor.py` returns JSON with GPU name, VRAM, free VRAM, CUDA/PyTorch state,
 RAM, disk, weights detected, and the recommended profile.
+
+## Local image generation (Forge)
+
+Forge is an existing installation. Configure its location for this shell, then
+check readiness without loading a model or starting inference:
+
+```bash
+export FORGE_HOME=/path/to/stable-diffusion-webui-forge
+export FORGE_PYTHON="$FORGE_HOME/venv/bin/python"
+python forge_runtime/run.py status
+```
+
+If Forge is stopped, run this in a dedicated terminal and leave it open:
+
+```bash
+./forge_runtime/launch.sh
+```
+
+In a second terminal:
+
+```bash
+python scripts/forge_job.py inpaint -- \
+  --image /path/to/owl.webp --mask /path/to/ears.png \
+  --prompt "Paint only the ear tufts chestnut brown." \
+  --denoising-strength 0.4 --mask-blur 3 --seed 431
+```
+
+`status` is read-only. `launch.sh` starts the existing loopback Forge only if it
+is not already responding and refuses startup below its VRAM floor. Run
+generation through `forge_job.py`, not `forge_runtime/run.py`; it acquires the
+same exclusive GPU lock as H3. Outputs and a provenance manifest go to
+`forge_runtime/outputs/<job-id>/`. The full contract and failure recovery are in
+[`forge_runtime/RUNBOOK.md`](forge_runtime/RUNBOOK.md). `scripts/doctor.py` is
+the broader workstation/H3 diagnostic; Forge-only readiness is `run.py status`.
+
+## Local speech generation (VibeVoice)
+
+VibeVoice keeps its checkout, isolated Python environment and model cache under
+the XDG data directory by default. Set `VIBEVOICE_HOME` to use another user-owned
+data directory. Bootstrap installs dependencies and clones pinned source voice
+samples; it does **not** download the 5.42 GB model:
+
+```bash
+./scripts/bootstrap_vibevoice.sh
+python voice_runtime/run.py status
+```
+
+After reviewing the model terms, explicitly prepare weights:
+
+```bash
+VIBEVOICE_RESEARCH_OK=1 python voice_runtime/run.py prepare
+python voice_runtime/run.py status
+```
+
+
+Generate only through the shared GPU queue:
+
+```bash
+VIBEVOICE_RESEARCH_OK=1 python scripts/vibevoice_job.py tts -- \
+  --text "Olá! Este é um teste de fala em português." \
+  --seed 431 --max-new-tokens 256
+```
+
+The selected 1.5B model card lists English and Chinese; Portuguese is
+unsupported, so this command is an experimental quality check only. The model
+card recommends research and development use, not commercial production.
+The 8 GB profile requires at least 5632 MiB free VRAM. Its sampler cannot run
+with the diffusion head offloaded to CPU.
+Respect the audible disclosure/watermark and require recorded consent for any
+real speaker reference. Details: [`voice_runtime/RUNBOOK.md`](voice_runtime/RUNBOOK.md)
+and [`reference/license-compliance.md`](reference/license-compliance.md).
+
+
 ## Repository layout
 
 ```text
@@ -65,19 +142,30 @@ postward-local-media-gen/
 │   ├── image-generation.md
 │   ├── license-compliance.md
 │   └── workflow-recipes.md
+├── voice_runtime/                        local VibeVoice TTS adapter
+│   ├── RUNBOOK.md                        runtime, model, and usage guide
+│   ├── client.py                         script parsing and HF model interface
+│   └── run.py                            status, explicit model prepare, TTS
+├── forge_runtime/                        local Forge / SDXL adapter
+│   ├── RUNBOOK.md                        next-session operating guide
+│   ├── launch.sh                         starts existing Forge; never installs
+│   ├── client.py                         txt2img/img2img/masked inpaint
+│   └── run.py                            status, CLI and provenance manifests
 ├── scripts/                              hardware and queue interfaces
 │   ├── doctor.py
-│   └── job_queue.py
-└── comfyui-runtime/                      ComfyUI implementation adapter
-    ├── RUNBOOK.md
-    ├── launch.sh
-    ├── fetch_h3_weights.sh
-    ├── run_workflow.py
-    ├── build_upscale_workflow.py
-    ├── submit_rtx_vsr.py
-    ├── run_hogwarts_shots.py
-    ├── monitor.py
-    └── workflows/
+│   ├── forge_job.py                      Forge wrapper via shared GPU lock
+│   ├── job_queue.py
+│   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
+├── comfyui-runtime/                      ComfyUI implementation adapter
+│   ├── RUNBOOK.md
+│   ├── launch.sh
+│   ├── fetch_h3_weights.sh
+│   ├── run_workflow.py
+│   ├── build_upscale_workflow.py
+│   ├── submit_rtx_vsr.py
+│   ├── run_hogwarts_shots.py
+│   └── workflows/
+└── tests/                                CPU-only adapter/queue contract tests
 ```
 
 ## Hardware profiles
@@ -89,8 +177,6 @@ postward-local-media-gen/
 | 12–16 GB | INT8 + NVFP4, 0.4–0.6 MP, test high-VRAM mode |
 | 16 GB+ | Native/high-VRAM profile, smoke test before 0.98 MP |
 
-Validated baseline: RTX 4060 8 GB, 62 GB RAM, NVIDIA driver 580.173.02,
-CUDA 13.0 runtime, PyTorch 2.11.0+cu128.
 
 ## Bootstrap the local adapter
 
@@ -113,27 +199,22 @@ installation details. The H3 weight download remains license-gated.
 
 ## Queueing and concurrent requests
 
-Two H3 jobs must not use the GPU simultaneously. Use the persistent queue:
-
-```bash
-python scripts/job_queue.py enqueue \
-  --kind h3-t2v \
-  --payload '{"prompt":"a cinematic train station at dawn"}'
-
-python scripts/job_queue.py list
-python scripts/job_queue.py status JOB_ID
-python scripts/job_queue.py cancel JOB_ID
-```
-
-To execute a command while holding the GPU lease:
+Forge and H3 share one GPU lock. The supported `run` path is synchronous and
+serializes inference:
 
 ```bash
 python scripts/job_queue.py run --kind h3-t2v -- \
   python comfyui-runtime/run_workflow.py ...
+
+python scripts/forge_job.py inpaint -- \
+  --image /path/to/owl.webp --mask /path/to/ears.png \
+  --prompt "Paint only the owl's ear tufts chestnut brown." --seed 431
 ```
 
-CPU-only ffmpeg work may run concurrently. Forge image inference and H3 video
-inference share the same GPU lease.
+`job_queue.py enqueue` records metadata only; there is no background dispatcher
+in this repository. CPU-only ffmpeg work may run concurrently. Never run Forge
+and H3 inference simultaneously on the same GPU.
+
 
 ## Verified video chain
 

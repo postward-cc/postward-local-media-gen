@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 RUNTIME = ROOT / "comfyui-runtime"
+
+from forge_runtime.client import DEFAULT_FORGE_URL, DEFAULT_MIN_FREE_VRAM_MB, ForgeClient, ForgeError
+from voice_runtime.run import status_data as vibevoice_info
 
 
 def command(*args: str) -> str | None:
@@ -52,6 +57,63 @@ def torch_info() -> dict:
         return {"available": False, "python": str(probe), "error": str(exc)}
 
 
+def forge_info(client_factory=ForgeClient) -> dict:
+    """Report Forge install/API/model/free VRAM without submitting inference."""
+    configured_home = os.environ.get("FORGE_HOME")
+    home = Path(configured_home).expanduser() if configured_home else None
+    required_model = os.environ.get("FORGE_MODEL", "sd_xl_base_1.0.safetensors")
+    checkpoint_value = os.environ.get("FORGE_CHECKPOINT_PATH")
+    checkpoint = (
+        Path(checkpoint_value).expanduser()
+        if checkpoint_value
+        else home / "models" / "Stable-diffusion" / required_model
+        if home
+        else None
+    )
+    url = os.environ.get("FORGE_URL", DEFAULT_FORGE_URL)
+    minimum_free = int(os.environ.get("FORGE_MIN_FREE_VRAM_MB", str(DEFAULT_MIN_FREE_VRAM_MB)))
+    install = {
+        "configured": home is not None,
+        "home": str(home) if home else None,
+        "launcher_present": bool(home and (home / "webui.sh").is_file()),
+        "checkpoint_path": str(checkpoint) if checkpoint else None,
+        "checkpoint_present": bool(checkpoint and checkpoint.is_file()),
+    }
+    try:
+        status = client_factory(url).status()
+    except ForgeError as exc:
+        return {
+            "installed": install["launcher_present"] and install["checkpoint_present"],
+            "installation": install,
+            "available": False,
+            "url": url,
+            "required_model": required_model,
+            "minimum_free_vram_mb": minimum_free,
+            "can_generate": False,
+            "error": str(exc),
+        }
+
+    loaded = status.get("model") or ""
+    model_loaded = required_model in loaded
+    free = status.get("cuda_free_mb")
+    enough_vram = free is not None and free >= minimum_free
+    return {
+        "installed": install["launcher_present"] and install["checkpoint_present"],
+        "installation": install,
+        "available": True,
+        "url": url,
+        "required_model": required_model,
+        "loaded_model": loaded,
+        "loaded_model_filename": status.get("model_filename"),
+        "loaded_model_sha256": status.get("model_sha256"),
+        "model_loaded": model_loaded,
+        "available_models": status.get("models", []),
+        "free_vram_mb": free,
+        "minimum_free_vram_mb": minimum_free,
+        "can_generate": model_loaded and enough_vram,
+        "memory": status.get("memory"),
+    }
+
 def main() -> int:
     gpu_query = command(
         "nvidia-smi", "--query-gpu=name,memory.total,memory.free,driver_version",
@@ -89,6 +151,8 @@ def main() -> int:
         "disk_free_gb": round(disk.free / 1024**3, 1),
         "disk_warning": disk.free < 20 * 1024**3,
         "weights_present": weights,
+        "forge": forge_info(),
+        "vibevoice": vibevoice_info(),
         "recommended_profile": profile,
         "gpu_concurrency": 1,
     }

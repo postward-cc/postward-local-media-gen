@@ -2,12 +2,11 @@
 # Download MiniMax H3 weights into ComfyUI/models/.
 #
 # HARD GATE: this script refuses to download unless LICENSE_OK=1 is exported.
-# The MiniMax H3 Community License (revised 2026-08-26) names the United Kingdom
-# as an Excluded Territory. UK users must hold a separate license before
-# downloading, deploying, or offering H3 as a hosted service.
+# Review the current license and confirm that this use is authorized in the
+# user's jurisdiction before setting the gate.
 #
-# After the user confirms the UK license has been granted:
-#   LICENSE_OK=1 ./fetch_h3_weights.sh
+# From the repository root after that review:
+#   LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh
 #
 # Downloads go via huggingface-cli. Files are pinned to:
 #   - Comfy-Org/MiniMax-H3  revision 4cc1d817b6184899b41293954329f576cb5ae86b
@@ -16,10 +15,9 @@
 set -euo pipefail
 
 if [[ "${LICENSE_OK:-0}" != "1" ]]; then
-  echo "ERROR: MiniMax H3 weights are gated behind license confirmation." >&2
-  echo "       Re-run after the UK license is granted:" >&2
+  echo "ERROR: MiniMax H3 weights require explicit confirmation of applicable license eligibility." >&2
+  echo "       Review PENDING_WEIGHTS.md and re-run only if the use is authorized:" >&2
   echo "         LICENSE_OK=1 $0" >&2
-  echo "       See PENDING_WEIGHTS.md for the legal basis." >&2
   exit 2
 fi
 
@@ -75,4 +73,4 @@ mv downloads/turbo-lora/minimax_h3_fl2v_turbo_8step_v1.0_comfyui_bf16.safetensor
 echo
 echo "Done. Disk used:"
 du -sh ComfyUI/models/* 2>/dev/null
-df -h /home | tail -1
+df -h .
