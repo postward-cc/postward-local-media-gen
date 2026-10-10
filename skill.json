@@ -39,6 +39,8 @@
   "video_generation": {
     "adapter": "comfyui-runtime",
     "setup": "./bootstrap.sh",
+    "comfyui_version": "v0.36.0",
+    "comfyui_requirements_snapshot": "requirements-comfyui-v0.36.0.txt",
     "model_weights": "explicit-license-gated-download",
     "weight_command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh",
     "workflows": ["T2V", "I2V", "R2V template", "RTX VSR"],

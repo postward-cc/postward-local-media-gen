@@ -158,6 +158,7 @@ postward-local-media-gen/
 ├── bootstrap.sh                          isolated idempotent bootstrap
 ├── requirements-core.txt                 this repo's own dependency (Pillow)
 ├── requirements-comfyui-extras.txt       ComfyUI CUDA extras
+├── requirements-comfyui-v0.36.0.txt      pinned release's own requirements
 ├── requirements-comfyui.lock             ComfyUI runtime, exact versions + hashes
 ├── requirements-vibevoice.txt            speech runtime inputs
 ├── requirements-vibevoice.lock           speech runtime, exact versions + hashes

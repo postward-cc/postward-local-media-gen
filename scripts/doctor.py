@@ -233,7 +233,20 @@ def lock_satisfies_inputs(lock_text: str, input_text: str) -> list[str]:
     return problems
 
 
-#: Inputs that feed each lock, paired for ``doctor.py verify-locks``.
+def comfyui_snapshot(root: Path = ROOT) -> str:
+    """The vendored requirements of the pinned ComfyUI release.
+
+    Resolution reads this snapshot rather than the checkout, so the committed
+    lock is reproducible from repository contents alone and stays verifiable
+    without cloning ComfyUI.
+    """
+    manifest = json.loads((root / "skill.json").read_text())
+    return manifest["video_generation"]["comfyui_requirements_snapshot"]
+
+
+#: Fixed inputs feeding each lock. The ComfyUI release's own requirements are
+#: not listed here: that file is versioned, and skill.json is where its name
+#: comes from, so there is exactly one place to change on a version bump.
 LOCK_INPUTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("requirements-comfyui.lock", ("requirements-core.txt",
                                    "requirements-comfyui-extras.txt")),
@@ -243,9 +256,33 @@ LOCK_INPUTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 
 def verify_locks(root: Path = ROOT) -> dict:
     """Check every committed lock: CUDA build tag and freshness against inputs."""
-    report = {}
+    report: dict = {}
+    comfyui_inputs: tuple[str, ...] | None = None
+    try:
+        snapshot = comfyui_snapshot(root)
+        version = json.loads((root / "skill.json").read_text())[
+            "video_generation"]["comfyui_version"]
+        expected = f"requirements-comfyui-{version}.txt"
+        problems = []
+        if snapshot != expected:
+            problems.append(
+                f"comfyui_requirements_snapshot is {snapshot} but the pinned "
+                f"version implies {expected}")
+        elif not (root / snapshot).exists():
+            problems.append(f"{snapshot} is missing from the repository")
+        else:
+            comfyui_inputs = (snapshot,)
+        report["skill.json"] = {
+            "status": "ok" if not problems else "stale",
+            "problems": problems,
+        }
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        report["skill.json"] = {"status": "unreadable-manifest",
+                                "problems": [str(exc)]}
     for lock_name, inputs in LOCK_INPUTS:
         lock = root / lock_name
+        if lock_name == "requirements-comfyui.lock":
+            inputs = inputs + (comfyui_inputs or ())
         entry: dict = {"inputs": list(inputs)}
         if not lock.exists():
             entry["status"] = "no-lock"

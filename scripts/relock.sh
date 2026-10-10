@@ -7,7 +7,8 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMFYUI_REQS="$ROOT/comfyui-runtime/ComfyUI/requirements.txt"
+COMFYUI_DIR="$ROOT/comfyui-runtime/ComfyUI"
+COMFYUI_SNAPSHOT="$ROOT/requirements-comfyui-v0.36.0.txt"
 COMFYUI_LOCK="$ROOT/requirements-comfyui.lock"
 VIBEVOICE_INPUT="$ROOT/requirements-vibevoice.txt"
 VIBEVOICE_LOCK="$ROOT/requirements-vibevoice.lock"
@@ -27,9 +28,14 @@ hashes, then verifies that the torch family carries the CUDA build tag the
 workstation profile expects.
 
 Targets:
-  comfyui      requirements-core.txt + extras + ComfyUI/requirements.txt
+  comfyui      core + extras + the vendored ComfyUI requirements snapshot
   vibevoice    requirements-vibevoice.txt
   all          both (default)
+
+Options:
+  --refresh-comfyui   Copy requirements.txt from the pinned ComfyUI checkout
+                      into the versioned snapshot, then relock. Run this after
+                      changing COMFYUI_VERSION.
 
 Environment:
   UV_BIN                uv executable.
@@ -38,12 +44,14 @@ Environment:
 EOF
 }
 
+REFRESH_COMFYUI=0
 while (($#)); do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
+    --refresh-comfyui) REFRESH_COMFYUI=1 ;;
     --help) usage; exit 0 ;;
     comfyui|vibevoice|all) TARGET="$1" ;;
-    *) echo "Unknown target: $1" >&2; usage >&2; exit 2 ;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
   shift
 done
@@ -52,6 +60,21 @@ if ! command -v "$UV_BIN" >/dev/null; then
   echo "ERROR: uv is required to compile the locks." >&2
   echo "  Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
   exit 2
+fi
+
+if (( REFRESH_COMFYUI )); then
+  SOURCE_REQS="$COMFYUI_DIR/requirements.txt"
+  if [[ ! -f "$SOURCE_REQS" ]]; then
+    echo "ERROR: $SOURCE_REQS not found; clone the pinned ComfyUI checkout first." >&2
+    echo "  COMFYUI_VERSION=$COMFYUI_VERSION ./bootstrap.sh --skip-python-deps" >&2
+    exit 2
+  fi
+  echo "Refreshing $COMFYUI_SNAPSHOT from $SOURCE_REQS"
+  if (( DRY_RUN )); then
+    printf '+ cp %s %s\n' "$SOURCE_REQS" "$COMFYUI_SNAPSHOT"
+  else
+    cp "$SOURCE_REQS" "$COMFYUI_SNAPSHOT"
+  fi
 fi
 
 # PyTorch's index stays an extra index so ordinary packages resolve from PyPI.
@@ -79,15 +102,16 @@ compile() {
 }
 
 if [[ "$TARGET" == "comfyui" || "$TARGET" == "all" ]]; then
-  if [[ ! -f "$COMFYUI_REQS" ]]; then
-    echo "ERROR: $COMFYUI_REQS not found." >&2
-    echo "  Run ./bootstrap.sh first, or clone the pinned ComfyUI checkout." >&2
+  if [[ ! -f "$COMFYUI_SNAPSHOT" ]]; then
+    echo "ERROR: $COMFYUI_SNAPSHOT not found." >&2
+    echo "  It is the vendored requirements of the pinned ComfyUI release." >&2
+    echo "  Create it with: ./scripts/relock.sh --refresh-comfyui" >&2
     exit 2
   fi
   compile "$COMFYUI_LOCK" \
     "$ROOT/requirements-core.txt" \
     "$ROOT/requirements-comfyui-extras.txt" \
-    "$COMFYUI_REQS"
+    "$COMFYUI_SNAPSHOT"
 fi
 
 if [[ "$TARGET" == "vibevoice" || "$TARGET" == "all" ]]; then

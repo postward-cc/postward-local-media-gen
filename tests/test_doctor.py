@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -235,6 +236,87 @@ class LockFreshnessTests(unittest.TestCase):
         for lock, entry in report.items():
             with self.subTest(lock=lock):
                 self.assertEqual(entry["status"], "ok", entry.get("problems"))
+
+
+class ComfyuiSnapshotTests(unittest.TestCase):
+    """The lock resolves from a vendored snapshot, not from a live checkout."""
+
+    def _manifest(self, directory: Path, version: str, snapshot: str) -> Path:
+        manifest = directory / "skill.json"
+        manifest.write_text(json.dumps({
+            "video_generation": {
+                "comfyui_version": version,
+                "comfyui_requirements_snapshot": snapshot,
+            }
+        }))
+        return manifest
+
+    def test_snapshot_naming_follows_the_pinned_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._manifest(root, "v0.36.0", "requirements-comfyui-v0.36.0.txt")
+            (root / "requirements-comfyui-v0.36.0.txt").write_text("torch\n")
+            (root / "requirements-core.txt").write_text("pillow==12.3.0\n")
+            (root / "requirements-comfyui-extras.txt").write_text("nvidia-vfx\n")
+            (root / "requirements-vibevoice.txt").write_text("librosa\n")
+            lock = "pillow==12.3.0\nnvidia-vfx==0.2.0.0\ntorch==2.11.0+cu128 \\\n    --hash=sha256:aa\nlibrosa==1.0.0\n"
+            (root / "requirements-comfyui.lock").write_text(lock)
+            (root / "requirements-vibevoice.lock").write_text(lock)
+
+            report = doctor.verify_locks(root)
+
+        self.assertEqual({k: v["status"] for k, v in report.items()},
+                         {"skill.json": "ok",
+                          "requirements-comfyui.lock": "ok",
+                          "requirements-vibevoice.lock": "ok"})
+
+    def test_snapshot_that_disagrees_with_the_pinned_release_is_stale(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._manifest(root, "v0.37.0", "requirements-comfyui-v0.36.0.txt")
+            (root / "requirements-comfyui-v0.36.0.txt").write_text("torch\n")
+            (root / "requirements-core.txt").write_text("pillow==12.3.0\n")
+            (root / "requirements-comfyui-extras.txt").write_text("nvidia-vfx\n")
+            (root / "requirements-vibevoice.txt").write_text("librosa\n")
+            (root / "requirements-comfyui.lock").write_text("pillow==12.3.0\n")
+            (root / "requirements-vibevoice.lock").write_text("librosa==1.0.0\n")
+
+            report = doctor.verify_locks(root)
+
+        self.assertEqual(report["skill.json"]["status"], "stale")
+        self.assertIn("requirements-comfyui-v0.37.0.txt",
+                      report["skill.json"]["problems"][0])
+
+    def test_missing_snapshot_is_reported_rather_than_resolved_from_the_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._manifest(root, "v0.36.0", "requirements-comfyui-v0.36.0.txt")
+            (root / "requirements-core.txt").write_text("pillow==12.3.0\n")
+            (root / "requirements-comfyui-extras.txt").write_text("nvidia-vfx\n")
+            (root / "requirements-vibevoice.txt").write_text("librosa\n")
+            (root / "requirements-comfyui.lock").write_text("pillow==12.3.0\n")
+            (root / "requirements-vibevoice.lock").write_text("librosa==1.0.0\n")
+
+            report = doctor.verify_locks(root)
+
+        self.assertEqual(report["skill.json"]["status"], "stale")
+        self.assertIn("missing from the repository",
+                      report["skill.json"]["problems"][0])
+
+    def test_unreadable_manifest_still_checks_the_other_locks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "requirements-core.txt").write_text("pillow==12.3.0\n")
+            (root / "requirements-comfyui-extras.txt").write_text("nvidia-vfx\n")
+            (root / "requirements-vibevoice.txt").write_text("librosa\n")
+            (root / "requirements-comfyui.lock").write_text(
+                "pillow==12.3.0\nnvidia-vfx==0.2.0.0\n")
+            (root / "requirements-vibevoice.lock").write_text("librosa==1.0.0\n")
+
+            report = doctor.verify_locks(root)
+
+        self.assertEqual(report["skill.json"]["status"], "unreadable-manifest")
+        self.assertEqual(report["requirements-vibevoice.lock"]["status"], "ok")
 
 
 class CudaTagCheckTests(unittest.TestCase):

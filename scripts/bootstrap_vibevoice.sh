@@ -53,9 +53,51 @@ if [[ ! -x "$VENV_DIR/bin/python" ]]; then
 fi
 VENV_PYTHON="$VENV_DIR/bin/python"
 "$ROOT/scripts/relock.sh" vibevoice
-"$UV_BIN" pip install --python "$VENV_PYTHON" --require-hashes -r "$LOCK"
+install_log="$VIBEVOICE_HOME/pip-install.log"
+if "$UV_BIN" pip install --python "$VENV_PYTHON" --require-hashes -r "$LOCK" 2>&1 \
+    | tee "$install_log"; then
+  :
+else
+  echo >&2
+  echo "The locked speech runtime did not install. Log: $install_log" >&2
+  echo "Common causes:" >&2
+  echo "  1. no network access to PyPI or the PyTorch wheel index" >&2
+  echo "  2. free disk under $VIBEVOICE_HOME" >&2
+  echo "  3. an artifact hash that no longer matches; re-run ./scripts/relock.sh vibevoice" >&2
+  exit 4
+fi
 
-"$VENV_PYTHON" -c 'from transformers import AutoModelForTextToWaveform, AutoProcessor; import torch; print("VibeVoice runtime ready:", torch.__version__, torch.cuda.is_available(), AutoModelForTextToWaveform.__name__)'
+# Readiness is asserted, not printed: an environment without CUDA is installed
+# but cannot generate speech, and saying "ready" there is a lie the next model
+# would have to discover.
+if "$VENV_PYTHON" - "$ROOT" <<'PY'
+import sys
+import torch
+from transformers import AutoModelForTextToWaveform, AutoProcessor
+
+sys.path.insert(0, sys.argv[1])
+from voice_runtime.client import MIN_FREE_VRAM_MB as required
+
+print(f"torch {torch.__version__}, cuda available: {torch.cuda.is_available()}")
+if not torch.cuda.is_available():
+    sys.exit("ERROR: the speech runtime has no usable CUDA device. "
+             "Check nvidia-smi and the driver before preparing weights.")
+free = None
+if torch.cuda.is_available():
+    free, _total = torch.cuda.mem_get_info()
+    print(f"free VRAM: {free // (1024 * 1024)} MiB (need {required} MiB)")
+    if free // (1024 * 1024) < required:
+        sys.exit(f"ERROR: only {free // (1024 * 1024)} MiB free VRAM; "
+                 f"{required} MiB is required for speech synthesis.")
+print("VibeVoice runtime ready:", AutoModelForTextToWaveform.__name__)
+PY
+then
+  :
+else
+  echo >&2
+  echo "Weights can still be prepared, but synthesis will fail until this is fixed." >&2
+  exit 5
+fi
 echo
 echo "VibeVoice source and voice samples: $SOURCE_DIR"
 echo "VibeVoice Python environment: $VENV_PYTHON"
