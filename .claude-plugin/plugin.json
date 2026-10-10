@@ -1,0 +1,23 @@
+{
+  "name": "postward-local-media-gen",
+  "displayName": "Postward Local Media Generation",
+  "version": "0.1.0",
+  "description": "Generate and transform images, video and speech locally, on the user's own NVIDIA GPU, with no hosted service involved.",
+  "author": {
+    "name": "Postward",
+    "url": "https://postward.cc"
+  },
+  "homepage": "https://postward.cc",
+  "repository": "https://github.com/postward-cc/postward-local-media-gen",
+  "license": "MIT",
+  "keywords": [
+    "media",
+    "image-generation",
+    "video",
+    "speech",
+    "local",
+    "offline",
+    "nvidia"
+  ],
+  "skills": ["."]
+}

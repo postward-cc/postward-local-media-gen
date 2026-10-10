@@ -4,6 +4,17 @@
   "display_name": "Postward Local Media Generation",
   "description": "Hardware-aware local image, speech and video generation for Postward users.",
   "entrypoint": "SKILL.md",
+"installation": {
+  "portable": "git clone https://github.com/postward-cc/postward-local-media-gen",
+  "update": "./scripts/update.sh",
+  "harnesses": {
+    "claude-code": "/plugin marketplace add postward-cc/postward-local-media-gen",
+    "omp": "omp plugin link <path-to-clone>",
+    "any-agent": "clone, then read SKILL.md; the skill is plain Markdown with YAML frontmatter"
+  },
+  "marketplace_manifest": ".claude-plugin/marketplace.json",
+  "plugin_manifest": ".claude-plugin/plugin.json"
+},
   "install": "./bootstrap.sh",
   "doctor": "python scripts/doctor.py",
   "queue": "python scripts/job_queue.py",
