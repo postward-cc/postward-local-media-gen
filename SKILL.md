@@ -1,3 +1,20 @@
+---
+name: postward-local-media-gen
+description: |
+  Generate or transform images, video and speech locally on the workstation,
+  on the user's own NVIDIA GPU, with no hosted service involved. Use this skill
+  whenever the user asks to generate images, edit or inpaint an image, run a
+  masked edit that must preserve pixels outside the mask, generate video from
+  text or from a first frame, keep continuity across multi-shot sequences,
+  synthesize speech or long-form dialogue, upscale video with RTX VSR, install
+  or check the local media runtime, decide hardware and VRAM profiles, or
+  choose which local tool should do a step this repository does not implement.
+  Also use it when reporting what this skill cannot do. Do not use it for
+  video timeline editing, layered image or PSD authoring, vector illustration,
+  RAW development, PDF assembly or page layout: see "What this skill does not
+  do" in this skill for the local alternatives.
+---
+
 # Postward Local Media Generation
 
 Use this skill when a user asks OMP to generate or transform images, video or

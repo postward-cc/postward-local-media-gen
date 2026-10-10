@@ -4,6 +4,47 @@ This repository is both an OMP skill and a local runtime bootstrap. A model
 can clone the repo, read `SKILL.md`, run the doctor, and bootstrap the local
 adapters without modifying system Python or the system CUDA toolkit.
 
+## Installing the skill into a harness
+
+`SKILL.md` carries YAML frontmatter with `name` and `description`, the format
+agent harnesses read to decide whether a skill applies. That part is portable:
+it was verified against both OMP and Codex skill packages, and it is the
+de facto convention rather than an OMP invention.
+
+What is not portable is installation. Harnesses disagree about where skills
+live and how they are registered, and none of them shares a protocol. The
+portable path is the same for all of them: **clone the repository, then point
+the harness at the directory.** The harness-specific part is only where it
+looks, which is a per-harness detail.
+
+`skill.json` is this repository's machine-readable contract — adapters, queue
+commands, hardware floor, licence gates, the tool preference order. Anything
+that can read JSON can consume it, including a harness that has no opinion
+about skills at all.
+
+## Updating
+
+There is no portable "install and auto-update" protocol across harnesses. Git
+plus an instruction inside the skill is the part that works everywhere, which
+is why updating is a script in the repository rather than a registry entry:
+
+```bash
+./scripts/update.sh              # fetch, fast-forward, verify
+./scripts/update.sh --dry-run    # show what would come
+```
+
+The update is verified. `update.sh` fast-forwards to the tracked branch and
+then runs `./scripts/check.sh`; if the gate fails it reports the commit that
+introduced the breakage and how to return to the previous one. If the diff
+touches a runtime input — `bootstrap.sh`, any `requirements-*`, `relock.sh` or
+`bootstrap_vibevoice.sh` — it says to re-run the bootstrap, because the
+environment and the repository have drifted apart.
+
+OMP users may additionally publish the skill to the OMP registry, which adds
+`omp skill install` and `omp skill update`. That is a convenience layered on
+top for one harness; it is not required, and it is not the mechanism this
+repository depends on.
+
 ## Prerequisites
 
 - NVIDIA driver (`nvidia-smi`) and git.

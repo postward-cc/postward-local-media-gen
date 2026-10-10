@@ -234,6 +234,7 @@ postward-local-media-gen/
 │   ├── relock.sh                         regenerates the runtime locks
 │   ├── check.sh                          offline gate; CI runs exactly this
 │   ├── check_contract.py                 manifest, probes and docs must agree
+│   ├── update.sh                         git fast-forward, then verify
 │   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
 ├── comfyui-runtime/                      ComfyUI implementation adapter
 │   ├── RUNBOOK.md
