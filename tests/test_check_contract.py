@@ -130,6 +130,69 @@ class FrontmatterTests(unittest.TestCase):
         self.assertTrue(any("metadata.version" in p for p in problems))
 
 
+class PluginManifestTests(unittest.TestCase):
+    """The manifests are how a harness finds the skill from the repo alone."""
+
+    def _repo(self, *, skill_name="a-skill", version="1.0.0",
+              plugin_name=None, plugin_version=None, listed=True,
+              license="MIT", repository="https://example.test/x"):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        (root / "SKILL.md").write_text(
+            "---\nname: {n}\ndescription: d\nmetadata:\n  version: {v}\n---\n\n# S\n"
+            .format(n=skill_name, v=version))
+        plugin = {"name": plugin_name or skill_name,
+                  "version": plugin_version or version}
+        if license is not None:
+            plugin["license"] = license
+        if repository is not None:
+            plugin["repository"] = repository
+        (root / ".claude-plugin").mkdir()
+        (root / ".claude-plugin" / "plugin.json").write_text(json.dumps(plugin))
+        entries = [{"name": plugin["name"], "source": "."}] if listed else []
+        (root / ".claude-plugin" / "marketplace.json").write_text(json.dumps(
+            {"name": "m", "owner": {"name": "o"}, "plugins": entries}))
+        return root
+
+    def test_consistent_manifests_pass(self):
+        self.assertEqual(
+            check_contract.plugin_manifest_problems(self._repo()), [])
+
+    def test_missing_plugin_manifest_is_reported(self):
+        root = self._repo()
+        (root / ".claude-plugin" / "plugin.json").unlink()
+
+        problems = check_contract.plugin_manifest_problems(root)
+
+        self.assertEqual(len(problems), 1)
+        self.assertIn("plugin.json", problems[0])
+
+    def test_version_drift_between_skill_and_plugin_is_reported(self):
+        problems = check_contract.plugin_manifest_problems(
+            self._repo(plugin_version="0.9.0"))
+
+        self.assertTrue(any("0.9.0" in p and "1.0.0" in p for p in problems))
+
+    def test_name_drift_is_reported(self):
+        problems = check_contract.plugin_manifest_problems(
+            self._repo(plugin_name="other"))
+
+        self.assertTrue(any("does not match" in p for p in problems))
+
+    def test_marketplace_not_listing_the_plugin_is_reported(self):
+        problems = check_contract.plugin_manifest_problems(
+            self._repo(listed=False))
+
+        self.assertTrue(any("marketplace.json" in p for p in problems))
+
+    def test_missing_license_or_repository_is_reported(self):
+        problems = check_contract.plugin_manifest_problems(
+            self._repo(license=None, repository=None))
+
+        self.assertEqual(len(problems), 2)
+
+
 class ManifestProblemTests(unittest.TestCase):
     def _root(self, manifest: dict) -> Path:
         directory = tempfile.TemporaryDirectory()

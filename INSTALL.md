@@ -6,21 +6,37 @@ adapters without modifying system Python or the system CUDA toolkit.
 
 ## Installing the skill into a harness
 
-`SKILL.md` carries YAML frontmatter with `name` and `description`, the format
-agent harnesses read to decide whether a skill applies. That part is portable:
-it was verified against both OMP and Codex skill packages, and it is the
-de facto convention rather than an OMP invention.
+`SKILL.md` carries YAML frontmatter with `name`, `description` and
+`metadata.version`, the format agent harnesses read to decide whether a skill
+applies. That part is portable: it was verified against both OMP and Codex
+skill packages, and it is the de facto convention rather than an OMP invention.
 
 What is not portable is installation. Harnesses disagree about where skills
-live and how they are registered, and none of them shares a protocol. The
-portable path is the same for all of them: **clone the repository, then point
-the harness at the directory.** The harness-specific part is only where it
-looks, which is a per-harness detail.
+live and how they are registered. The portable path is the same for all of
+them: **clone the repository, then point the harness at the directory.**
 
-`skill.json` is this repository's machine-readable contract — adapters, queue
-commands, hardware floor, licence gates, the tool preference order. Anything
-that can read JSON can consume it, including a harness that has no opinion
-about skills at all.
+```bash
+git clone https://github.com/postward-cc/postward-local-media-gen
+cd postward-local-media-gen
+```
+
+Then, per harness:
+
+| Harness | Command | Verified |
+|---|---|---|
+| Any agent that reads Markdown | Clone and read `SKILL.md` | yes |
+| OMP | `omp plugin link /path/to/postward-local-media-gen` | yes, dry run |
+| Claude Code | `/plugin marketplace add postward-cc/postward-local-media-gen`, then install `postward-local-media-gen@postward` | from documentation, not run here |
+| OMP registry | `omp skill install @<scope>/postward-local-media-gen` | not published |
+
+`skill.json` carries the same table under `installation`, so an agent reading
+the machine-readable contract finds the right command without parsing prose.
+
+The two manifests are versioned so a harness can discover the skill from the
+repository alone: `.claude-plugin/plugin.json` describes the plugin and points
+at the root skill, and `.claude-plugin/marketplace.json` lists it, which is what
+makes `/plugin marketplace add <repo>` work. Both reference `.` because the
+skill lives at the repository root rather than in a subdirectory.
 
 ## Updating
 

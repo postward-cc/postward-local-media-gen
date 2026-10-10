@@ -41,6 +41,12 @@ cat SKILL.md
 python scripts/doctor.py
 ```
 
+Cloning and pointing the harness at the directory is the portable install and
+works everywhere. Per-harness commands are in
+[`INSTALL.md`](INSTALL.md#installing-the-skill-into-a-harness) and in
+`skill.json` under `installation`; the manifests under `.claude-plugin/` let a
+harness discover the skill from this repository alone.
+
 Install the local adapter without modifying system Python or CUDA:
 
 ```bash
@@ -198,6 +204,9 @@ postward-local-media-gen/
 │   ├── 0004-hash-verified-locks.md        why locks, and why CUDA tag is checked
 │   ├── 0005-tool-preference-order.md      why a declared order for tools
 │   └── 0006-ci-scope.md                   what CI can honestly run
+├── .claude-plugin/                       lets any harness discover the skill
+│   ├── plugin.json                       plugin metadata, points at the root skill
+│   └── marketplace.json                  makes `plugin marketplace add` work
 ├── .github/workflows/ci.yml              runs scripts/check.sh, offline only
 ├── playbooks/                            task guides for changing this repo
 │   ├── README.md                         index and source-of-truth map

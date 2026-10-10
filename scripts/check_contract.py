@@ -182,16 +182,58 @@ def manifest_problems(root: Path = ROOT) -> list[str]:
     return problems
 
 
+def plugin_manifest_problems(root: Path = ROOT) -> list[str]:
+    """The plugin manifests must agree with the repository they describe.
+
+    They are what lets a harness discover this skill from the repository alone,
+    so a version or name that drifts from ``SKILL.md`` makes the discovery
+    wrong rather than merely untidy.
+    """
+    problems = []
+    plugin_path = root / ".claude-plugin" / "plugin.json"
+    market_path = root / ".claude-plugin" / "marketplace.json"
+    if not plugin_path.exists():
+        return [".claude-plugin/plugin.json is missing; a harness cannot discover the skill"]
+    if not market_path.exists():
+        return [".claude-plugin/marketplace.json is missing; "
+                "claude plugin marketplace add <repo> would find nothing"]
+
+    skill = frontmatter((root / "SKILL.md").read_text())
+    plugin = json.loads(plugin_path.read_text())
+    market = json.loads(market_path.read_text())
+
+    for field, label in ((skill.get("name"), "SKILL.md"),
+                         (plugin.get("name"), "plugin.json")):
+        if field != plugin.get("name"):
+            problems.append(
+                f"{label} name {field!r} does not match plugin.json "
+                f"{plugin.get('name')!r}")
+    if plugin.get("version") != skill.get("metadata.version"):
+        problems.append(
+            f"plugin.json version {plugin.get('version')!r} does not match "
+            f"SKILL.md metadata.version {skill.get('metadata.version')!r}")
+    entries = market.get("plugins") or []
+    if not any(entry.get("name") == plugin.get("name") for entry in entries):
+        problems.append(
+            f"marketplace.json does not list a plugin named {plugin.get('name')!r}")
+    for field in ("license", "repository"):
+        if field not in plugin:
+            problems.append(f"plugin.json is missing {field}")
+    return problems
+
+
 def report(root: Path = ROOT) -> dict:
     docs = markdown_problems(root)
     manifest = manifest_problems(root)
     package = skill_package_problems(root)
-    ok = not docs and not manifest and not package
+    plugin = plugin_manifest_problems(root)
+    ok = not docs and not manifest and not package and not plugin
     return {
         "documents_checked": len(markdown_files(root)),
         "markdown_problems": docs,
         "manifest_problems": manifest,
         "package_problems": package,
+        "plugin_manifest_problems": plugin,
         "status": "ok" if ok else "problems",
     }
 
