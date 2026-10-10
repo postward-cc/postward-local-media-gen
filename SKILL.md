@@ -54,6 +54,7 @@ For a new workstation or an agent handed this repository:
 
 Keep machine settings in the user's shell/session or their own untracked
 configuration. Never write machine-specific paths into this repository.
+
 ## Operating contract
 
 1. Run `python scripts/doctor.py` for the workstation summary,
@@ -69,6 +70,14 @@ configuration. Never write machine-specific paths into this repository.
 7. Record source-image and mask SHA-256 for image edits/inpaints, plus each
    I2V source hash.
 8. Return the job ID, output paths, resolution, model, settings and warnings.
+
+For a multi-step image sequence, derive every stage from one approved reference
+or the preceding stage; do not treat matching prompts/seeds across independent
+`txt2img` calls as an identity lock. Change one component per stage. If the
+editor alters protected regions, run `scripts/compose_masked_edit.py` with a
+white-editable mask and PNG output, then require `protected_pixels_exact: true`
+in its manifest. Review the seam and edited patch visually before accepting the
+stage.
 
 ## Capabilities
 
@@ -93,6 +102,12 @@ configuration. Never write machine-specific paths into this repository.
   img2img and masked inpaint. Set `FORGE_HOME`; use `scripts/forge_job.py` so
   the operation holds the shared GPU lock. Inpainting masks use white for
   editable pixels and black for protected pixels.
+- Multi-step image continuity: derive stages from one approved reference, edit
+  one component per step, and do not rely on identical prompts/seeds across
+  independent generations. If the editor changes protected regions, run
+  `scripts/compose_masked_edit.py` to compose only the mask-authorized patch.
+  This CPU-only step writes a lossless PNG and SHA-256 sidecar; require
+  `protected_pixels_exact: true` and visually inspect the seam.
 - Local speech generation: `voice_runtime/run.py` uses pinned VibeVoice 1.5B HF;
   `scripts/vibevoice_job.py` holds the shared GPU lock. Bootstrap its isolated
   runtime with `scripts/bootstrap_vibevoice.sh`; choose storage with

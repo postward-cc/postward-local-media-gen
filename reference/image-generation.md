@@ -66,6 +66,73 @@ python scripts/forge_job.py img2img -- \
   --denoising-strength 0.35 --seed 431
 ```
 
+## Consistent multi-step photo sequences
+
+Do not generate every tutorial panel independently with `txt2img`, even when
+the prompt and seed match. A seed is not an identity lock; proportions,
+placement, and parts can drift between calls.
+
+1. Create and approve one full-scene reference at the final framing and aspect
+   ratio. Keep the subject fully inside the frame with room for parts that will
+   be added later.
+2. Edit one tutorial change at a time, starting each stage from the previous
+   stage. Keep the same canvas size and camera description. Review each raw
+   model result before accepting it.
+3. If a reference editor changes pixels outside the intended change, composite
+   only the edited region back onto the approved previous stage:
+
+   ```bash
+   python scripts/compose_masked_edit.py \
+     --base /path/to/previous-stage.png \
+     --edit /path/to/model-edit.png \
+     --mask /path/to/edit-region.png \
+     --feather 4 \
+     --out /path/to/next-stage.png
+   ```
+
+   The compositor requires identical dimensions, treats white mask pixels as
+   editable and black as protected, writes lossless PNG, and verifies that
+   protected pixels remain exactly equal. Gray pixels and `--feather` soften
+   only the transition. It writes a sidecar manifest with SHA-256 for the base,
+   edit, mask and output. Visually inspect seams; exact pixels outside a mask do
+   not guarantee that the edited patch itself is plausible.
+
+   Composition is CPU-only and does not acquire the GPU lock. The CLI refuses to
+   overwrite inputs or existing outputs unless `--overwrite` is explicit.
+4. Keep a transition review sheet and reject a frame if the object changes size,
+   moves, loses a part, or gains an unrequested part. Read the tutorial's real
+   step list before choosing what changes in each frame.
+
+The first local comparison used Qwen Image Edit 2511 through ComfyUI 0.37.0
+and `ComfyUI-GGUF` on an RTX 4060 8 GB (`torch 2.11.0+cu128`). It preserved
+the robot better than independent prompts and edited one component at a time,
+but raw outputs still changed unrelated pixels and sometimes over-expanded an
+edit. The workflow then composited only the authorized patch onto the previous
+stage. This profile is optional, not installed or downloaded by this
+repository, and is **not** part of the Forge CLI.
+
+Tested model files and provenance:
+
+| File | Hugging Face source | ComfyUI folder | Bytes | SHA-256 |
+|---|---|---|---:|---|
+| `qwen-image-edit-2511-Q3_K_S.gguf` | [Unsloth Qwen Edit 2511 GGUF](https://huggingface.co/unsloth/Qwen-Image-Edit-2511-GGUF) | `models/unet/` | 9,218,914,912 | `d613d933c54ea2cace72bc556f803137c45363513677268283c08a5480a99309` |
+| `qwen_2.5_vl_7b_fp8_scaled.safetensors` | [Comfy-Org Qwen Image ComfyUI](https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI) | `models/text_encoders/` | 9,384,670,680 | `cb5636d852a0ea6a9075ab1bef496c0db7aef13c02350571e388aea959c5c0b4` |
+| `qwen_image_vae.safetensors` | [Comfy-Org Qwen Image ComfyUI](https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI) | `models/vae/` | 253,806,246 | `a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f` |
+
+The GGUF loader is [ComfyUI-GGUF](https://github.com/city96/ComfyUI-GGUF)
+(tested commit `6ea2651`). Together these files use about 18.9 GB of disk;
+check disk and VRAM before downloading. The Qwen 2511 and Unsloth GGUF cards
+list Apache-2.0; review the current terms and source revisions before use.
+The 8 GB test used offloading and took about 6–9 minutes per edit. Do not
+assume that result generalizes to other GPUs, ComfyUI versions, or quant files.
+
+In the robot trial, the model produced seven sequential frames from the actual
+tutorial order. Every transition changed pixels only within the component's
+declared mask; the source frame, object scale, and camera remained fixed.
+Buttons still looked somewhat glossy, and no hand/tool action was shown.
+IP-Adapter Plus SDXL retained broad appearance but was less reliable at adding
+the requested craft parts.
+
 Direct `forge_runtime/run.py` generation calls refuse to run unless the shared
 queue sets `POSTWARD_GPU_LOCK_HELD=1`. Use `scripts/forge_job.py` so Forge and
 ComfyUI/H3 contend on the same `comfyui-runtime/state/gpu.lock`:

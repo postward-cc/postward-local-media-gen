@@ -10,6 +10,7 @@
   "supported_media": ["image", "video", "audio", "upscale"],
   "local_adapters": [
     "Stable Diffusion WebUI Forge (txt2img, img2img, masked inpaint)",
+    "Lossless CPU masked image composition",
     "ComfyUI MiniMax H3",
     "VibeVoice 1.5B HF (local TTS)",
     "NVIDIA RTX Video Super Resolution"
@@ -24,6 +25,16 @@
     "model_downloads": false,
     "gpu_lock": "comfyui-runtime/state/gpu.lock",
     "minimum_free_vram_mb_default": 4096
+  },
+  "image_composition": {
+    "adapter": "forge_runtime.masked_composition",
+    "command": "python scripts/compose_masked_edit.py",
+    "gpu_required": false,
+    "output_format": "PNG",
+    "mask_semantics": "white=editable, black=protected, gray=blend",
+    "feathering": "optional gaussian mask blur",
+    "protected_pixels": "byte-for-byte equal outside nonzero mask pixels",
+    "provenance": "sidecar manifest with source, edit, mask and output SHA-256"
   },
   "video_generation": {
     "adapter": "comfyui-runtime",

@@ -7,7 +7,8 @@ OMP skill needed to run local media generation on consumer NVIDIA GPUs.
 Current adapters:
 
 - **Image**: local Stable Diffusion WebUI Forge / SDXL (`txt2img`, `img2img`,
-  masked inpaint); uses the existing Forge install, no image API
+  masked inpaint) plus lossless, mask-protected composition; uses an existing
+  Forge install and sends no inputs to hosted image services
 - **Video**: ComfyUI + MiniMax H3 open weights
 - **Speech**: VibeVoice 1.5B-HF through Transformers; runtime and weights use
   the XDG data location or `VIBEVOICE_HOME`
@@ -24,6 +25,7 @@ added later on top of the stable CLI seam.
 - text-to-image (Forge/SDXL)
 - image-to-image (Forge/SDXL)
 - masked inpainting (Forge/SDXL; white mask pixels are editable)
+- lossless CPU composition that preserves pixels outside a specified edit mask
 - text-to-video (T2V), image-to-video (I2V), and reference-to-video (R2V template)
 - multi-shot narrative sequences with explicit frame provenance
 - text-to-speech and long-form speaker dialogue (VibeVoice 1.5B-HF)
@@ -150,10 +152,12 @@ postward-local-media-gen/
 │   ├── RUNBOOK.md                        next-session operating guide
 │   ├── launch.sh                         starts existing Forge; never installs
 │   ├── client.py                         txt2img/img2img/masked inpaint
+│   ├── masked_composition.py             pixel-protected edit composition
 │   └── run.py                            status, CLI and provenance manifests
 ├── scripts/                              hardware and queue interfaces
 │   ├── doctor.py
 │   ├── forge_job.py                      Forge wrapper via shared GPU lock
+│   ├── compose_masked_edit.py            CPU-only masked image compositor
 │   ├── job_queue.py
 │   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
 ├── comfyui-runtime/                      ComfyUI implementation adapter
@@ -165,7 +169,8 @@ postward-local-media-gen/
 │   ├── submit_rtx_vsr.py
 │   ├── run_hogwarts_shots.py
 │   └── workflows/
-└── tests/                                CPU-only adapter/queue contract tests
+├── tests/                                CPU-only adapter/queue contract tests
+│   └── test_masked_composition.py        protected-pixel behavior tests
 ```
 
 ## Hardware profiles
