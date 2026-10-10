@@ -32,3 +32,24 @@ jobs:
 
       - name: Run offline checks
         run: ./scripts/check.sh
+
+  # Validates the skill package exactly as the OMP registry would, without
+  # publishing anything. The checkout is clean by construction, which is the
+  # condition packaging requires: the packer includes untracked and git-ignored
+  # files, so a workstation that has run bootstrap cannot publish at all.
+  skill-package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The published CLI has a `#!/usr/bin/env bun` shebang, so installing it
+      # with npm is not enough: bun has to be present as the interpreter.
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install the OMP CLI
+        # Pinned so the gate stays deterministic; the rule being checked is the
+        # shape of this package, not whatever the CLI ships this week.
+        run: bun add -g @oh-my-pi/pi-coding-agent@18.8.9
+
+      - name: Validate the skill package
+        run: omp skill publish --dry-run

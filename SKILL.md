@@ -13,6 +13,8 @@ description: |
   video timeline editing, layered image or PSD authoring, vector illustration,
   RAW development, PDF assembly or page layout: see "What this skill does not
   do" in this skill for the local alternatives.
+metadata:
+  version: 0.1.0
 ---
 
 # Postward Local Media Generation

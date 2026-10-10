@@ -45,6 +45,30 @@ OMP users may additionally publish the skill to the OMP registry, which adds
 top for one harness; it is not required, and it is not the mechanism this
 repository depends on.
 
+### Packaging constraints
+
+The registry accepts up to 20 MiB unpacked, and **the packer includes untracked
+and git-ignored files** — it does not read `.gitignore`. A workstation that has
+run `./bootstrap.sh` holds a ComfyUI checkout and a venv, so publishing from it
+fails on size until those are out of the way. Verified: a single 25 MB file
+placed anywhere in the tree, including under a git-ignored path, is enough to
+trip the limit.
+
+This is why publishing belongs in CI, where `actions/checkout` gives a clean
+tree by construction. Locally, publish from a checkout of the committed files:
+
+```bash
+git archive HEAD | tar -x -C /tmp/skill && cd /tmp/skill
+omp skill publish --dry-run
+```
+
+CI runs `omp skill publish --dry-run` on every change in the `skill-package`
+job, which validates the package against the registry's own rules without
+publishing anything. Publishing for real needs a token
+(`omp skill token`) stored as a repository secret, and a decision about
+whether every merge to `main` should be released automatically — a merge that
+passes the gate but breaks packaging would otherwise be released silently.
+
 ## Prerequisites
 
 - NVIDIA driver (`nvidia-smi`) and git.
