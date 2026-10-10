@@ -59,7 +59,8 @@ configuration. Never write machine-specific paths into this repository.
 
 1. Run `python scripts/doctor.py` for the workstation summary,
    `python forge_runtime/run.py status` for Forge, and
-   `python voice_runtime/run.py status` for VibeVoice.
+   `python voice_runtime/run.py status` for VibeVoice. Use its
+   `external_tools` entries when a fallback tool is considered.
 2. Read `reference/hardware-profiles.md` and use detected capabilities.
 3. Review model terms before downloads. VibeVoice 1.5B requires the explicit
    `VIBEVOICE_RESEARCH_OK=1` acknowledgment and is research-only.
@@ -192,7 +193,8 @@ the gate. See `reference/license-compliance.md`.
   stopping a known service; never kill unrelated GPU processes.
 - Missing tool: name the exact missing program or container image, the step
   that needs it, and the install path. Do not silently substitute an online
-  service for a local step.
+  service for a local step. Confirm absence through `doctor.py`
+  `external_tools` before reporting a tool as missing.
 
 ## Tooling alternatives
 
@@ -224,6 +226,29 @@ Concurrent requests. Never run inference itself — Forge, ComfyUI/H3, VSR or
 speech — inside a container: `FORGE_HOME`, the shared GPU lock and the local
 venv installs are the supported topology. See `reference/docker-sidecars.md`
 for containerized CPU sidecars, mount layout and image pinning.
+
+## Tool preference order
+
+Several tools can perform the same operation. Choose by this order, not by tool
+name, and never run two of them over the same pixels in one step:
+
+| Rank | Source | Why it wins |
+|---|---|---|
+| 1 | Repository adapter (`forge_runtime`, `comfyui-runtime`, `voice_runtime`, `compose_masked_edit.py`) | owns the GPU lock, the manifest and the provenance contract |
+| 2 | External local tool that `doctor.py` reports installed, at a recorded version | needs no install and its version is known |
+| 3 | Container sidecar with a pinned digest | requires pulling an image; see `reference/docker-sidecars.md` |
+| — | Hosted service | never; user files stay on the workstation |
+
+Ties resolve downward: the already-installed tool beats one that must be
+installed, and an earlier rank beats a later one. One step, one engine — two
+compositors or two editors over the same output void the manifest's account of
+what produced the file.
+
+`doctor.py` reports `external_tools` with one entry per known tool, carrying
+`available`, the resolved `path` and its `version`. Read it before choosing a
+fallback: never assume a local tool is installed. For MCP servers, the list of
+mounted servers is what the harness reports, not this repository; the binaries
+behind them still appear in `external_tools`.
 
 ## Output contract
 

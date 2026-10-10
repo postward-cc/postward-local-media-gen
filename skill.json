@@ -72,6 +72,23 @@
     "command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh",
     "vibevoice_command": "VIBEVOICE_RESEARCH_OK=1 python voice_runtime/run.py prepare"
   },
+  "tool_selection": {
+    "order": ["repository-adapter", "installed-external-tool", "pinned-container-sidecar"],
+    "hosted_services": "never",
+    "one_engine_per_step": true,
+    "discovery": "scripts/doctor.py external_tools reports available, path and version per tool",
+    "mcp_servers": "listed by the harness; their binaries appear in external_tools"
+  },
+  "external_tools": {
+    "probed_by": "scripts/doctor.py",
+    "missing_tool_is_not_an_error": true,
+    "ids": [
+      "ffmpeg", "ffprobe", "imagemagick", "graphicsmagick", "libvips", "gmic",
+      "openimageio", "gimp", "inkscape", "qpdf", "ghostscript", "darktable",
+      "rawtherapee", "exiftool", "docker"
+    ],
+    "container_reference": "reference/docker-sidecars.md"
+  },
   "concurrency": {
     "gpu_inference_jobs": 1,
     "queue": "python scripts/job_queue.py"

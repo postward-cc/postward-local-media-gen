@@ -17,11 +17,63 @@ from forge_runtime.client import DEFAULT_FORGE_URL, DEFAULT_MIN_FREE_VRAM_MB, Fo
 from voice_runtime.run import status_data as vibevoice_info
 
 
-def command(*args: str) -> str | None:
+def command(*args: str, timeout: int = 15) -> str | None:
     try:
-        return subprocess.check_output(args, text=True, stderr=subprocess.STDOUT).strip()
-    except (OSError, subprocess.CalledProcessError):
+        return subprocess.check_output(
+            args, text=True, stderr=subprocess.STDOUT, timeout=timeout
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
         return None
+
+
+#: Tools this skill may invoke when no repository adapter covers the step. The
+#: key is the tool id used in ``doctor.py`` output and in SKILL.md; the flag is
+#: the one that makes that tool print a version. Probing must never be fatal:
+#: a missing tool is reported, not raised.
+EXTERNAL_TOOLS: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
+    ("ffmpeg", "video", "FFmpeg", "-version", ("ffmpeg",)),
+    ("ffprobe", "video", "FFmpeg", "-version", ("ffprobe",)),
+    ("imagemagick", "raster", "ImageMagick", "--version", ("magick", "convert")),
+    ("graphicsmagick", "raster", "GraphicsMagick", "version", ("gm",)),
+    ("libvips", "raster", "libvips", "--version", ("vips",)),
+    ("gmic", "filter", "G'MIC", "--version", ("gmic",)),
+    ("openimageio", "filter", "OpenImageIO", "--help", ("oiiotool",)),
+    ("gimp", "raster", "GIMP", "--version", ("gimp-console",)),
+    ("inkscape", "vector", "Inkscape", "--version", ("inkscape",)),
+    ("qpdf", "pdf", "qpdf", "--version", ("qpdf",)),
+    ("ghostscript", "pdf", "Ghostscript", "--version", ("gs",)),
+    ("darktable", "raw", "darktable", "--version", ("darktable-cli",)),
+    ("rawtherapee", "raw", "RawTherapee", "--version", ("rawtherapee-cli",)),
+    ("exiftool", "metadata", "ExifTool", "-ver", ("exiftool",)),
+    ("docker", "sidecar", "Docker", "--version", ("docker",)),
+)
+
+
+def external_tool_info(tools: tuple = EXTERNAL_TOOLS) -> dict:
+    """Report which external local tools exist and at which version.
+
+    A tool that is absent, or that fails to report a version, is recorded as
+    unavailable; it is never an error. This is the evidence behind the tool
+    preference order in SKILL.md: an agent must not assume a local tool is
+    installed.
+    """
+    report: dict = {}
+    for key, capability, name, version_flag, candidates in tools:
+        path = next((p for p in (shutil.which(c) for c in candidates) if p), None)
+        entry = {
+            "capability": capability,
+            "name": name,
+            "command": candidates[0],
+            "path": path,
+            "available": path is not None,
+            "version": None,
+        }
+        if path is not None:
+            printed = command(path, version_flag, timeout=10)
+            if printed:
+                entry["version"] = printed.splitlines()[0][:200]
+        report[key] = entry
+    return report
 
 
 def memory_gb() -> float | None:
@@ -153,6 +205,7 @@ def main() -> int:
         "weights_present": weights,
         "forge": forge_info(),
         "vibevoice": vibevoice_info(),
+        "external_tools": external_tool_info(),
         "recommended_profile": profile,
         "gpu_concurrency": 1,
     }

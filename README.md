@@ -136,6 +136,14 @@ alongside a queued inference job. A container may be used for such a step when
 the user runs Docker; inference itself is never containerized. Details:
 [`reference/docker-sidecars.md`](reference/docker-sidecars.md).
 
+When several tools can do the same job, the skill prefers them in this order: a
+repository adapter, then an external local tool that `doctor.py` reports
+installed at a known version, then a container sidecar with a pinned digest. A
+hosted service is never an option, and one step runs one engine.
+`scripts/doctor.py` reports each known tool under `external_tools` with
+`available`, resolved `path` and `version`, so availability is measured rather
+than assumed.
+
 
 ## Repository layout
 
