@@ -69,6 +69,20 @@ publishing anything. Publishing for real needs a token
 whether every merge to `main` should be released automatically — a merge that
 passes the gate but breaks packaging would otherwise be released silently.
 
+## Related: local media editing
+
+This repository generates. Editing a finished asset — trimming a video,
+burning subtitles, watermarking, resizing an image — is a sibling project,
+[postward-creative-mcp](https://github.com/postward-cc/postward-creative-mcp),
+which exposes ffmpeg and ImageMagick as agent tools over MCP. Docker is its only
+dependency.
+
+The two are independent: this skill invokes local scripts, while an MCP server
+is mounted by the harness. Having one never requires the other. Read that
+project's own README for registration steps, and see
+[`reference/optional-tools.md`](reference/optional-tools.md) for why the local
+server is the better choice for private material.
+
 ## Prerequisites
 
 - NVIDIA driver (`nvidia-smi`) and git.
