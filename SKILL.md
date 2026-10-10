@@ -236,6 +236,23 @@ speech — inside a container: `FORGE_HOME`, the shared GPU lock and the local
 venv installs are the supported topology. See `reference/docker-sidecars.md`
 for containerized CPU sidecars, mount layout and image pinning.
 
+### When this table does not cover the need
+
+The table is a starting point, not the universe, and `external_tools` probes
+only what this repository declares. Resolve a gap in this order:
+
+1. Does an adapter already do it? Check before assuming it does not.
+2. Does the user's machine already have a suitable binary? Ask or check; never
+   install a tool the user did not ask for.
+3. If the user names a tool, declare it first — add the probe and the
+   `skill.json` entry following `playbooks/adding-a-local-tool.md`, then use
+   it. An undeclared tool is invisible to the next run and to the doctor.
+4. Only then consider a pinned sidecar.
+
+Never close a gap with a hosted service or by uploading assets to obtain a
+tool. If the need is a capability rather than a local binary, the harness's own
+skill discovery may cover it; that finds capabilities, not local programs.
+
 ## Playbooks
 
 `playbooks/` holds task-oriented guides for changing this repository: adding a
