@@ -123,6 +123,72 @@ class PythonRuntimeTests(unittest.TestCase):
         self.assertEqual(info["pinned_version"], doctor.PINNED_PYTHON_VERSION)
 
 
+class LockDriftTests(unittest.TestCase):
+    LOCK = "pillow==12.3.0 \\\n    --hash=sha256:aa\ntransformers==5.17.0\n"
+
+    def test_matching_environment_is_in_sync(self):
+        installed = {"pillow": "12.3.0", "transformers": "5.17.0"}
+
+        report = doctor.env_drift(self.LOCK, installed)
+
+        self.assertTrue(report["in_sync"])
+        self.assertEqual(report["mismatched"], [])
+        self.assertEqual(report["missing"], [])
+
+    def test_wrong_version_is_reported_as_drift_not_missing(self):
+        installed = {"pillow": "11.3.0", "transformers": "5.17.0"}
+
+        report = doctor.env_drift(self.LOCK, installed)
+
+        self.assertFalse(report["in_sync"])
+        self.assertEqual(report["mismatched"],
+                         [{"package": "pillow", "locked": "12.3.0",
+                           "installed": "11.3.0"}])
+        self.assertEqual(report["missing"], [])
+
+    def test_absent_package_is_missing_not_mismatched(self):
+        installed = {"pillow": "12.3.0"}
+
+        report = doctor.env_drift(self.LOCK, installed)
+
+        self.assertEqual(report["missing"],
+                         [{"package": "transformers", "locked": "5.17.0"}])
+        self.assertEqual(report["mismatched"], [])
+
+    def test_name_normalization_matches_dist_metadata(self):
+        report = doctor.env_drift("nvidia_vfx==0.2.0.0\n", {"Nvidia-Vfx": "0.2.0.0"})
+
+        self.assertTrue(report["in_sync"])
+
+    def test_absent_lock_is_distinguished_from_absent_environment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing_lock = doctor.environment_drift(
+                Path(directory) / "none.lock", Path(directory) / "venv" / "bin" / "python"
+            )
+        self.assertEqual(missing_lock["status"], "no-lock")
+
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "lock.txt"
+            lock.write_text(self.LOCK)
+            no_env = doctor.environment_drift(
+                lock, Path(directory) / "venv" / "bin" / "python"
+            )
+        self.assertEqual(no_env["status"], "no-environment")
+
+    def test_unusable_interpreter_reports_a_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "lock.txt"
+            lock.write_text(self.LOCK)
+            broken = Path(directory) / "python"
+            broken.write_text("")
+            broken.chmod(0o755)
+
+            with patch.object(doctor, "command", return_value=None):
+                report = doctor.environment_drift(lock, broken)
+
+        self.assertEqual(report["status"], "unreadable-environment")
+
+
 class CudaTagCheckTests(unittest.TestCase):
     def test_lock_without_cuda_build_is_rejected(self):
         lock = "torch==2.14.1 \\\n    --hash=sha256:aa\ntorchvision==0.29.1\ntorchaudio==2.11.0\n"

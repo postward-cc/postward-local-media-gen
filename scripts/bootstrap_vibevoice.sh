@@ -3,12 +3,13 @@
 set -Eeuo pipefail
 
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCK="$ROOT/requirements-vibevoice.lock"
 VIBEVOICE_HOME="${VIBEVOICE_HOME:-$XDG_DATA_HOME/postward/vibevoice}"
 SOURCE_DIR="${VIBEVOICE_SOURCE:-$VIBEVOICE_HOME/source}"
 VENV_DIR="${VIBEVOICE_HOME}/venv"
 UV_BIN="${UV_BIN:-uv}"
 PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
-TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
 SOURCE_REPO="https://github.com/vibevoice-community/VibeVoice.git"
 SOURCE_REVISION="952326ddb264062466a888cf32a5b2f4e803e16e"
 if ! command -v git >/dev/null; then
@@ -51,11 +52,8 @@ if [[ ! -x "$VENV_DIR/bin/python" ]]; then
   "$UV_BIN" venv --python "$PYTHON_VERSION" "$VENV_DIR"
 fi
 VENV_PYTHON="$VENV_DIR/bin/python"
-"$UV_BIN" pip install --python "$VENV_PYTHON" --index-url "$TORCH_INDEX_URL" "torch==2.11.0"
-"$UV_BIN" pip install --python "$VENV_PYTHON" \
-  "transformers==5.17.0" \
-  "diffusers==0.35.2" \
-  accelerate soundfile librosa
+"$ROOT/scripts/relock.sh" vibevoice
+"$UV_BIN" pip install --python "$VENV_PYTHON" --require-hashes -r "$LOCK"
 
 "$VENV_PYTHON" -c 'from transformers import AutoModelForTextToWaveform, AutoProcessor; import torch; print("VibeVoice runtime ready:", torch.__version__, torch.cuda.is_available(), AutoModelForTextToWaveform.__name__)'
 echo

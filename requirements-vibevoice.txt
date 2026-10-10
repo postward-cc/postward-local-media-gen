@@ -1,0 +1,13 @@
+# Local speech runtime inputs, compiled into requirements-vibevoice.lock by
+# ./scripts/relock.sh vibevoice.
+#
+# The TTS runtime is installed into its own environment under the XDG data
+# home, separate from the ComfyUI runtime. Only transformers is version-pinned
+# here because voice_runtime/run.py checks for it; the rest resolve through the
+# lock.
+torch==2.11.0
+transformers==5.17.0
+diffusers==0.35.2
+accelerate
+soundfile
+librosa

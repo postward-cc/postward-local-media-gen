@@ -68,6 +68,7 @@
     "python_source": "uv-managed; not the system interpreter",
     "own_dependencies": "requirements-core.txt",
     "lockfile": "requirements-comfyui.lock",
+    "speech_lockfile": "requirements-vibevoice.lock",
     "relock_command": "./scripts/relock.sh",
     "lock_verification": "python scripts/doctor.py check-lock requirements-comfyui.lock",
     "cuda_build_tag": "cu128",

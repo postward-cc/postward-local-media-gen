@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 RUNTIME = ROOT / "comfyui-runtime"
 
 from forge_runtime.client import DEFAULT_FORGE_URL, DEFAULT_MIN_FREE_VRAM_MB, ForgeClient, ForgeError
+from voice_runtime.client import home_dir as vibevoice_home, python_path as vibevoice_python
 from voice_runtime.run import status_data as vibevoice_info
 
 
@@ -118,6 +119,79 @@ def cuda_tag_problems(lock_text: str, expected: str = EXPECTED_CUDA_TAG) -> list
                     f"{package}=={version} lacks the +{expected} CUDA build"
                 )
     return problems
+
+
+def lock_pins(lock_text: str) -> dict[str, str]:
+    """Extract ``name -> version`` from a ``uv pip compile`` requirements lock."""
+    pins = {}
+    for line in lock_text.splitlines():
+        match = re.match(r"^([A-Za-z0-9._-]+)==([^\s\\]+)", line)
+        if match:
+            pins[match.group(1).lower().replace("_", "-")] = match.group(2)
+    return pins
+
+
+def env_drift(lock_text: str, installed: dict[str, str]) -> dict:
+    """Compare an environment against its lock.
+
+    ``installed`` maps distribution names to versions. Mismatched and missing
+    packages are reported separately: a stale environment is a different
+    problem from one that was never installed.
+    """
+    pins = lock_pins(lock_text)
+    normalized = {k.lower().replace("_", "-"): v for k, v in installed.items()}
+    mismatched = [
+        {"package": name, "locked": version, "installed": normalized.get(name)}
+        for name, version in sorted(pins.items())
+        if name in normalized and normalized[name] != version
+    ]
+    missing = [
+        {"package": name, "locked": version}
+        for name, version in sorted(pins.items())
+        if name not in normalized
+    ]
+    return {
+        "locked_packages": len(pins),
+        "installed_packages": len(normalized),
+        "mismatched": mismatched,
+        "missing": missing,
+        "in_sync": not mismatched and not missing,
+    }
+
+
+def installed_distributions(python: Path) -> dict[str, str] | None:
+    """List distribution versions inside an environment, or None if unusable."""
+    probe = (
+        "import json;"
+        "from importlib.metadata import distributions;"
+        "print(json.dumps({d.metadata['Name'].lower(): d.version"
+        " for d in distributions() if d.metadata['Name']}))"
+    )
+    raw = command(str(python), "-c", probe, timeout=60)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return None
+
+
+def environment_drift(lock: Path, python: Path) -> dict:
+    """Drift of one environment against one lock, plus the reason if unknown."""
+    if not lock.exists():
+        return {"status": "no-lock", "lock": str(lock)}
+    if not python.exists() or not os.access(python, os.X_OK):
+        return {"status": "no-environment", "lock": str(lock),
+                "python": str(python)}
+    installed = installed_distributions(python)
+    if installed is None:
+        return {"status": "unreadable-environment", "lock": str(lock),
+                "python": str(python)}
+    report = env_drift(lock.read_text(), installed)
+    report["status"] = "in-sync" if report["in_sync"] else "drifted"
+    report["lock"] = str(lock)
+    report["python"] = str(python)
+    return report
 
 
 def check_lock(path: str) -> int:
@@ -230,6 +304,14 @@ def forge_info(client_factory=ForgeClient) -> dict:
         "memory": status.get("memory"),
     }
 
+def vibevoice_environment() -> dict:
+    """Drift of the speech runtime against its lock."""
+    report = environment_drift(ROOT / "requirements-vibevoice.lock",
+                                vibevoice_python())
+    report["home"] = str(vibevoice_home())
+    return report
+
+
 def main() -> int:
     if sys.argv[1:2] == ["check-lock"]:
         if len(sys.argv) != 3:
@@ -275,6 +357,7 @@ def main() -> int:
         "weights_present": weights,
         "forge": forge_info(),
         "vibevoice": vibevoice_info(),
+        "vibevoice_environment": vibevoice_environment(),
         "external_tools": external_tool_info(),
         "recommended_profile": profile,
         "gpu_concurrency": 1,

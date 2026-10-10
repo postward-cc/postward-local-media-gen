@@ -29,13 +29,14 @@ The main bootstrap is idempotent and installs under
 supplies and pins the interpreter (CPython 3.12 by default, `PYTHON_VERSION`
 overrides); do not create the environment with `python -m venv`, because a
 system-interpreter venv dies when that interpreter is upgraded or removed.
-The runtime is installed from `requirements-comfyui.lock` at exact versions
-with artifact hashes; regenerate it with `./scripts/relock.sh` after changing
-`COMFYUI_VERSION` or either requirements file. `scripts/doctor.py` reports both
-interpreters under `python_runtime`, and `check-lock` verifies the PyTorch
-family carries the `+cu128` CUDA build. The bootstrap does not download H3
-weights. Read `INSTALL.md` for choices and `skill.json` for the
-machine-readable contract.
+Both runtimes are installed from `requirements-comfyui.lock` and
+`requirements-vibevoice.lock` at exact versions with artifact hashes;
+regenerate them with `./scripts/relock.sh` after changing `COMFYUI_VERSION` or
+any requirements file. `scripts/doctor.py` reports both interpreters under
+`python_runtime`, measures an installed environment against its lock, and
+`check-lock` verifies the PyTorch family carries the `+cu128` CUDA build. The
+bootstrap does not download H3 weights. Read `INSTALL.md` for choices and
+`skill.json` for the machine-readable contract.
 
 
 ## First-time local configuration
