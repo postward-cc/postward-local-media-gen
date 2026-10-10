@@ -1,0 +1,30 @@
+{
+  "name": "postward-local-media-gen",
+  "version": "0.1.0",
+  "description": "Generate and transform images, video and speech locally, on the user's own NVIDIA GPU, with no hosted service involved.",
+  "author": {
+    "name": "Postward",
+    "url": "https://postward.cc"
+  },
+  "homepage": "https://postward.cc",
+  "repository": "https://github.com/postward-cc/postward-local-media-gen",
+  "license": "MIT",
+  "skills": "./",
+  "interface": {
+    "displayName": "Postward Local Media Generation",
+    "shortDescription": "Generate and transform images, video and speech locally on your own NVIDIA GPU.",
+    "longDescription": "Local-first media generation for a workstation's own NVIDIA GPU, with no hosted service involved. Covers text-to-image, image-to-image, masked inpainting that preserves pixels outside the mask, text-to-video and image-to-video, RTX video upscaling, and speech synthesis with long-form dialogue. Serialises GPU work through one lease so a consumer-sized card is never oversubscribed, and reports what the machine can actually do before asking it to generate anything.",
+    "developerName": "Postward",
+    "websiteURL": "https://postward.cc",
+    "privacyPolicyURL": "https://postward.cc/privacy",
+    "termsOfServiceURL": "https://postward.cc/terms",
+    "category": "Creative Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "Check what this workstation can do before generating anything: run `python scripts/doctor.py` from the skill directory.",
+      "Generate an image, a video, or speech locally, following the operating contract in SKILL.md.",
+      "Perform a masked edit that preserves pixels outside the mask, then verify the seam."
+    ],
+    "brandColor": "#111827"
+  }
+}

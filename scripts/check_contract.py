@@ -182,43 +182,71 @@ def manifest_problems(root: Path = ROOT) -> list[str]:
     return problems
 
 
+PLUGIN_MANIFESTS: tuple[tuple[str, str], ...] = (
+    (".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"),
+    (".codex-plugin/plugin.json", ".agents/plugins/marketplace.json"),
+)
+
+
 def plugin_manifest_problems(root: Path = ROOT) -> list[str]:
-    """The plugin manifests must agree with the repository they describe.
+    """Every plugin manifest must agree with the repository it describes.
 
     They are what lets a harness discover this skill from the repository alone,
     so a version or name that drifts from ``SKILL.md`` makes the discovery
-    wrong rather than merely untidy.
+    wrong rather than merely untidy. Two families are declared because two
+    harnesses read two layouts; both are checked against the same ``SKILL.md``
+    so neither can drift independently.
     """
     problems = []
-    plugin_path = root / ".claude-plugin" / "plugin.json"
-    market_path = root / ".claude-plugin" / "marketplace.json"
-    if not plugin_path.exists():
-        return [".claude-plugin/plugin.json is missing; a harness cannot discover the skill"]
-    if not market_path.exists():
-        return [".claude-plugin/marketplace.json is missing; "
-                "claude plugin marketplace add <repo> would find nothing"]
+    skill_name = frontmatter((root / "SKILL.md").read_text()).get("name")
+    skill_version = frontmatter((root / "SKILL.md").read_text()).get("metadata.version")
 
-    skill = frontmatter((root / "SKILL.md").read_text())
-    plugin = json.loads(plugin_path.read_text())
-    market = json.loads(market_path.read_text())
+    for plugin_rel, market_rel in PLUGIN_MANIFESTS:
+        plugin_path, market_path = root / plugin_rel, root / market_rel
+        label = plugin_rel.split("/")[0]
+        if not plugin_path.exists():
+            problems.append(f"{plugin_rel} is missing")
+            continue
+        if not market_path.exists():
+            problems.append(f"{market_rel} is missing")
+            continue
 
-    for field, label in ((skill.get("name"), "SKILL.md"),
-                         (plugin.get("name"), "plugin.json")):
-        if field != plugin.get("name"):
+        plugin = json.loads(plugin_path.read_text())
+        market = json.loads(market_path.read_text())
+
+        if plugin.get("name") != skill_name:
             problems.append(
-                f"{label} name {field!r} does not match plugin.json "
+                f"{label}: plugin name {plugin.get('name')!r} does not match "
+                f"SKILL.md {skill_name!r}")
+        version = plugin.get("version")
+        if version != skill_version:
+            problems.append(
+                f"{label}: version {version!r} does not match SKILL.md "
+                f"metadata.version {skill_version!r}")
+        if not plugin.get("license"):
+            problems.append(f"{label}: plugin.json is missing license")
+        if not plugin.get("repository"):
+            problems.append(f"{label}: plugin.json is missing repository")
+        if label == ".claude-plugin" and "." not in plugin.get("skills", []):
+            problems.append(f"{label}: plugin.json must include the root SKILL.md")
+        if label == ".codex-plugin" and plugin.get("skills") != "./":
+            problems.append(f"{label}: plugin.json must point at the root skill")
+        entries = market.get("plugins") or []
+        entry = next((e for e in entries if e.get("name") == plugin.get("name")), None)
+        if not entry:
+            problems.append(
+                f"{label}: {market_rel} does not list a plugin named "
                 f"{plugin.get('name')!r}")
-    if plugin.get("version") != skill.get("metadata.version"):
-        problems.append(
-            f"plugin.json version {plugin.get('version')!r} does not match "
-            f"SKILL.md metadata.version {skill.get('metadata.version')!r}")
-    entries = market.get("plugins") or []
-    if not any(entry.get("name") == plugin.get("name") for entry in entries):
-        problems.append(
-            f"marketplace.json does not list a plugin named {plugin.get('name')!r}")
-    for field in ("license", "repository"):
-        if field not in plugin:
-            problems.append(f"plugin.json is missing {field}")
+        elif label == ".codex-plugin":
+            source = entry.get("source", {})
+            if source != {"source": "local", "path": "./"}:
+                problems.append(
+                    f"{label}: marketplace source must be local path './', "
+                    f"got {source!r}")
+        if market.get("name") != "postward":
+            problems.append(
+                f"{label}: marketplace name {market.get('name')!r} must be "
+                f"'postward' so both harnesses register the same catalog")
     return problems
 
 

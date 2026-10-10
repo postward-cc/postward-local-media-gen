@@ -8,12 +8,25 @@
   "portable": "git clone https://github.com/postward-cc/postward-local-media-gen",
   "update": "./scripts/update.sh",
   "harnesses": {
-    "claude-code": "/plugin marketplace add postward-cc/postward-local-media-gen",
+    "codex": "codex plugin marketplace add postward-cc/postward-local-media-gen && codex plugin add postward-local-media-gen@postward",
     "omp": "omp plugin link <path-to-clone>",
-    "any-agent": "clone, then read SKILL.md; the skill is plain Markdown with YAML frontmatter"
+    "opencode": "ln -s <path-to-clone> ~/.config/opencode/skills/postward-local-media-gen",
+    "claude-code": "/plugin marketplace add postward-cc/postward-local-media-gen",
+    "any-agent": "clone, then read SKILL.md; plain Markdown with YAML frontmatter"
   },
-  "marketplace_manifest": ".claude-plugin/marketplace.json",
-  "plugin_manifest": ".claude-plugin/plugin.json"
+  "updates": {
+    "git": "./scripts/update.sh",
+    "codex": "codex plugin marketplace upgrade postward && codex plugin add postward-local-media-gen@postward",
+    "omp": "./scripts/update.sh in the linked clone",
+    "opencode": "./scripts/update.sh in the symlinked clone",
+    "claude-code": "Enable marketplace auto-update in /plugin > Marketplaces, or run claude plugin update postward-local-media-gen@postward",
+    "omp-registry": "omp skill update (only if published)"
+  },
+  "manifests": {
+    "claude-code": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json"],
+    "codex": [".codex-plugin/plugin.json", ".agents/plugins/marketplace.json"]
+  },
+  "marketplace_name": "postward"
 },
   "install": "./bootstrap.sh",
   "doctor": "python scripts/doctor.py",
