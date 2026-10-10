@@ -135,62 +135,83 @@ class PluginManifestTests(unittest.TestCase):
 
     def _repo(self, *, skill_name="a-skill", version="1.0.0",
               plugin_name=None, plugin_version=None, listed=True,
-              license="MIT", repository="https://example.test/x"):
+              families=check_contract.PLUGIN_MANIFESTS, market_name="postward"):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         root = Path(directory.name)
         (root / "SKILL.md").write_text(
             "---\nname: {n}\ndescription: d\nmetadata:\n  version: {v}\n---\n\n# S\n"
             .format(n=skill_name, v=version))
-        plugin = {"name": plugin_name or skill_name,
-                  "version": plugin_version or version}
-        if license is not None:
-            plugin["license"] = license
-        if repository is not None:
-            plugin["repository"] = repository
-        (root / ".claude-plugin").mkdir()
-        (root / ".claude-plugin" / "plugin.json").write_text(json.dumps(plugin))
-        entries = [{"name": plugin["name"], "source": "."}] if listed else []
-        (root / ".claude-plugin" / "marketplace.json").write_text(json.dumps(
-            {"name": "m", "owner": {"name": "o"}, "plugins": entries}))
+        for plugin_rel, market_rel in families:
+            plugin = {
+                "name": plugin_name or skill_name,
+                "version": plugin_version or version,
+                "license": "MIT",
+                "repository": "https://example.test/repo",
+                "skills": "." if plugin_rel.startswith(".claude") else "./",
+            }
+            plugin_path = root / plugin_rel
+            plugin_path.parent.mkdir(parents=True, exist_ok=True)
+            plugin_path.write_text(json.dumps(plugin))
+            source = ("." if plugin_rel.startswith(".claude")
+                      else {"source": "local", "path": "./"})
+            entries = [{"name": plugin["name"], "source": source}] if listed else []
+            market_path = root / market_rel
+            market_path.parent.mkdir(parents=True, exist_ok=True)
+            market_path.write_text(json.dumps(
+                {"name": market_name, "owner": {"name": "o"}, "plugins": entries}))
         return root
 
     def test_consistent_manifests_pass(self):
         self.assertEqual(
             check_contract.plugin_manifest_problems(self._repo()), [])
 
-    def test_missing_plugin_manifest_is_reported(self):
+    def test_both_manifest_families_are_declared(self):
+        self.assertEqual(
+            {p.split("/")[0] for p, _ in check_contract.PLUGIN_MANIFESTS},
+            {".claude-plugin", ".codex-plugin"})
+
+    def test_missing_manifest_in_one_family_is_reported(self):
         root = self._repo()
-        (root / ".claude-plugin" / "plugin.json").unlink()
+        (root / ".codex-plugin" / "plugin.json").unlink()
 
         problems = check_contract.plugin_manifest_problems(root)
 
-        self.assertEqual(len(problems), 1)
-        self.assertIn("plugin.json", problems[0])
+        self.assertTrue(any(".codex-plugin/plugin.json" in p for p in problems))
 
-    def test_version_drift_between_skill_and_plugin_is_reported(self):
+    def test_missing_marketplace_in_one_family_is_reported(self):
+        root = self._repo()
+        (root / ".agents" / "plugins" / "marketplace.json").unlink()
+
+        problems = check_contract.plugin_manifest_problems(root)
+
+        self.assertTrue(any(".agents/plugins/marketplace.json" in p
+                            for p in problems))
+
+    def test_version_drift_in_one_family_is_reported(self):
         problems = check_contract.plugin_manifest_problems(
             self._repo(plugin_version="0.9.0"))
 
         self.assertTrue(any("0.9.0" in p and "1.0.0" in p for p in problems))
+        self.assertEqual(len(problems), 2, "both families should report drift")
 
     def test_name_drift_is_reported(self):
         problems = check_contract.plugin_manifest_problems(
             self._repo(plugin_name="other"))
 
-        self.assertTrue(any("does not match" in p for p in problems))
+        self.assertTrue(all("does not match" in p for p in problems))
 
     def test_marketplace_not_listing_the_plugin_is_reported(self):
         problems = check_contract.plugin_manifest_problems(
             self._repo(listed=False))
 
-        self.assertTrue(any("marketplace.json" in p for p in problems))
+        self.assertTrue(all("does not list" in p for p in problems))
 
-    def test_missing_license_or_repository_is_reported(self):
+    def test_divergent_marketplace_names_are_reported(self):
         problems = check_contract.plugin_manifest_problems(
-            self._repo(license=None, repository=None))
+            self._repo(market_name="other-catalog"))
 
-        self.assertEqual(len(problems), 2)
+        self.assertTrue(any("must be 'postward'" in p for p in problems))
 
 
 class ManifestProblemTests(unittest.TestCase):

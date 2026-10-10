@@ -207,6 +207,9 @@ postward-local-media-gen/
 ├── .claude-plugin/                       lets any harness discover the skill
 │   ├── plugin.json                       plugin metadata, points at the root skill
 │   └── marketplace.json                  makes `plugin marketplace add` work
+├── .codex-plugin/                        Codex-native manifest, richer metadata
+│   └── plugin.json
+├── .agents/plugins/marketplace.json      Codex-native catalog, same name
 ├── .github/workflows/ci.yml              runs scripts/check.sh, offline only
 ├── playbooks/                            task guides for changing this repo
 │   ├── README.md                         index and source-of-truth map

@@ -20,46 +20,78 @@ git clone https://github.com/postward-cc/postward-local-media-gen
 cd postward-local-media-gen
 ```
 
-Then, per harness:
+Then, per harness. Every row was checked where the tool was available on this
+machine; the rows marked "docs" come from the harness's documentation and
+were not executed here.
 
-| Harness | Command | Verified |
+| Harness | Install | Update |
 |---|---|---|
-| Any agent that reads Markdown | Clone and read `SKILL.md` | yes |
-| OMP | `omp plugin link /path/to/postward-local-media-gen` | yes, dry run |
-| Claude Code | `/plugin marketplace add postward-cc/postward-local-media-gen`, then install `postward-local-media-gen@postward` | from documentation, not run here |
-| OMP registry | `omp skill install @<scope>/postward-local-media-gen` | not published |
+| Any agent that reads Markdown | Clone and read `SKILL.md` | `./scripts/update.sh` |
+| Codex | `codex plugin marketplace add postward-cc/postward-local-media-gen` then `codex plugin add postward-local-media-gen@postward` (**installed and verified**) | `codex plugin marketplace upgrade postward`; use Codex's plugin browser to refresh the installed plugin |
+| OMP | `omp plugin link /path/to/postward-local-media-gen` (**dry run verified**) | `./scripts/update.sh` in the linked clone |
+| opencode | `ln -s /path/to/postward-local-media-gen ~/.config/opencode/skills/postward-local-media-gen` (path convention verified from opencode docs and local layout; CLI not installed) | `./scripts/update.sh` in the symlinked clone |
+| Claude Code | `/plugin marketplace add postward-cc/postward-local-media-gen`, then install `postward-local-media-gen@postward` (**docs**) | Third-party marketplace auto-update is **off by default**: enable it in `/plugin` → Marketplaces, or use `claude plugin update postward-local-media-gen@postward` (**docs**) |
+| OMP registry | `omp skill install @<scope>/postward-local-media-gen` | `omp skill update`; not published |
 
 `skill.json` carries the same table under `installation`, so an agent reading
 the machine-readable contract finds the right command without parsing prose.
 
-The two manifests are versioned so a harness can discover the skill from the
-repository alone: `.claude-plugin/plugin.json` describes the plugin and points
-at the root skill, and `.claude-plugin/marketplace.json` lists it, which is what
-makes `/plugin marketplace add <repo>` work. Both reference `.` because the
-skill lives at the repository root rather than in a subdirectory.
+### Why Codex and opencode differ
+
+**Codex and Claude Code read a catalog.** Both resolve a plugin from a
+marketplace manifest committed to the repository, so the repository is
+self-describing: add the repo, install by name. Codex accepts
+`owner/repo`, an HTTPS git URL or an SSH URL, and `codex plugin marketplace
+upgrade` refreshes the snapshot — the git equivalent of `git pull`.
+
+**opencode reads a directory.** There is no marketplace and no git channel for
+skills: it loads `~/.config/opencode/skills/<name>/SKILL.md`. Because this
+repository has `SKILL.md` at its root, symlinking the clone into that directory
+puts it exactly where opencode looks, and `git pull` inside the clone updates
+it. That is the pattern already in use on this machine for other skills.
+
+**OMP splits the two.** `omp skill install` only accepts a registry coordinate
+and rejects a path or a git URL; `omp plugin link` accepts a directory. So the
+git path for OMP goes through its plugin command.
+
+### The manifests
+
+Two families are committed, because two harnesses read two layouts:
+
+| Path | Read by |
+|---|---|
+| `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` | Claude Code; Codex also resolves these |
+| `.codex-plugin/plugin.json`, `.agents/plugins/marketplace.json` | Codex natively, with its richer `interface` metadata |
+
+Both declare the same marketplace name, `postward`, and both point at the
+repository root (`.` for Claude Code, `./` for Codex) because the skill lives
+there rather than in a subdirectory. `scripts/check_contract.py` holds each
+manifest family to the name and version in `SKILL.md` and the same catalog name,
+so neither can drift into advertising something else.
 
 ## Updating
 
-There is no portable "install and auto-update" protocol across harnesses. Git
-plus an instruction inside the skill is the part that works everywhere, which
-is why updating is a script in the repository rather than a registry entry:
+There is no single update command shared by all harnesses. Each harness keeps
+its own plugin/skill cache; the source stays a git repository. Use the path
+that matches how you installed:
 
-```bash
-./scripts/update.sh              # fetch, fast-forward, verify
-./scripts/update.sh --dry-run    # show what would come
-```
+| Install method | Refresh |
+|---|---|
+| Plain clone, OMP `plugin link`, or OpenCode symlink | `./scripts/update.sh` in the clone |
+| Codex Git marketplace | `codex plugin marketplace upgrade postward`, then `codex plugin add postward-local-media-gen@postward` |
+| Claude Code marketplace | Enable auto-update in `/plugin` → Marketplaces (off by default for third-party markets), or `claude plugin update postward-local-media-gen@postward` |
+| OMP skill registry | `omp skill update`; this skill is not published there |
 
-The update is verified. `update.sh` fast-forwards to the tracked branch and
-then runs `./scripts/check.sh`; if the gate fails it reports the commit that
-introduced the breakage and how to return to the previous one. If the diff
-touches a runtime input — `bootstrap.sh`, any `requirements-*`, `relock.sh` or
+The portable update script fast-forwards the tracked branch and then runs
+`./scripts/check.sh`; if the gate fails it reports the commit that introduced
+the breakage and how to return to the previous one. If the diff touches a
+runtime input — `bootstrap.sh`, any `requirements-*`, `relock.sh` or
 `bootstrap_vibevoice.sh` — it says to re-run the bootstrap, because the
 environment and the repository have drifted apart.
 
-OMP users may additionally publish the skill to the OMP registry, which adds
-`omp skill install` and `omp skill update`. That is a convenience layered on
-top for one harness; it is not required, and it is not the mechanism this
-repository depends on.
+For harness-managed installs, the harness refreshes its own cache from the
+Git marketplace. It does not update the local clone. The manifests live in the
+repo and their version/name agreement is checked by `scripts/check.sh`.
 
 ### Packaging constraints
 
