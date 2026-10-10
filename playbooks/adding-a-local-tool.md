@@ -21,7 +21,9 @@ and GPU lock arbitration, it is an adapter, not a tool.
 ## Add the probe
 
 An agent must be able to tell whether the tool exists. Every tool the skill may
-invoke is declared in `scripts/doctor.py`:
+invoke is declared in `scripts/doctor.py`. A tool that exists on a machine but
+is not declared is invisible to the skill and to the doctor, which is why a
+user-named tool gets declared before it gets used.
 
 ```python
 EXTERNAL_TOOLS: tuple[tuple[str, str, str, str, tuple[str, ...]], ...] = (
