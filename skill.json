@@ -83,6 +83,18 @@
     "command": "LICENSE_OK=1 ./comfyui-runtime/fetch_h3_weights.sh",
     "vibevoice_command": "VIBEVOICE_RESEARCH_OK=1 python voice_runtime/run.py prepare"
   },
+  "playbooks": {
+    "index": "playbooks/README.md",
+    "entries": [
+      "playbooks/adding-a-local-tool.md",
+      "playbooks/adding-an-adapter.md",
+      "playbooks/removing-a-tool.md",
+      "playbooks/changing-dependencies.md",
+      "playbooks/evaluating-a-third-party-cli.md",
+      "playbooks/verifying-a-change.md"
+    ],
+    "read_before": "editing this repository"
+  },
   "tool_selection": {
     "order": ["repository-adapter", "installed-external-tool", "pinned-container-sidecar"],
     "hosted_services": "never",

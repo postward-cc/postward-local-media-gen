@@ -139,6 +139,26 @@ resolving another release's dependencies.
 CI deliberately does not attempt generation. A hosted runner has no NVIDIA GPU,
 and a test that never runs is worse than no test.
 
+### Local-only checks
+
+`./scripts/check_local.sh` runs everything above and then `tests/local/`: the
+committed ComfyUI workflow JSON, its conversion to API format, and the settings
+a submission patches into the graph. These never run in CI. Their job is to give
+confidence before pushing an edit to the video and upscale tools — that every
+workflow still produces a submittable graph, that no link points at a node that
+does not exist, and that caller-supplied settings land where they should.
+
+```bash
+./scripts/check_local.sh
+```
+
+## Changing this repository
+
+`playbooks/` holds task-oriented guides for agents: adding a local tool, adding
+an adapter, removing or replacing something, changing a dependency, evaluating
+a third-party CLI, and verifying a change. Start at
+[`playbooks/README.md`](playbooks/README.md).
+
 ## Options
 
 ```bash

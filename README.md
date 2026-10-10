@@ -167,6 +167,14 @@ postward-local-media-gen/
 ├── docs/adr/                             architectural decisions
 │   └── 0001-skill-primary-interface.md
 ├── .github/workflows/ci.yml              runs scripts/check.sh, offline only
+├── playbooks/                            task guides for changing this repo
+│   ├── README.md                         index and source-of-truth map
+│   ├── adding-a-local-tool.md
+│   ├── adding-an-adapter.md
+│   ├── removing-a-tool.md
+│   ├── changing-dependencies.md
+│   ├── evaluating-a-third-party-cli.md
+│   └── verifying-a-change.md
 ├── reference/                            model-facing operational references
 │   ├── hardware-profiles.md
 │   ├── concurrency.md
@@ -208,6 +216,8 @@ postward-local-media-gen/
 │   ├── test_doctor.py                    capability probes, locks, drift
 │   ├── test_job_queue.py                 GPU lease exclusivity, orphan recovery
 │   └── test_bootstrap_guards.py          licence gate, version guards
+├── tests/local/                          local-only, never in CI
+│   └── test_comfyui_workflows.py         workflow JSON still converts to a graph
 ```
 
 ## Hardware profiles

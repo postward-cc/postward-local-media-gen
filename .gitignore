@@ -60,3 +60,6 @@ docs/__pycache__/
 
 # offline check scratch environment
 .check-venv/
+
+# local-only check scratch environment
+.local-check-venv/

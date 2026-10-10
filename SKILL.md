@@ -236,6 +236,17 @@ speech — inside a container: `FORGE_HOME`, the shared GPU lock and the local
 venv installs are the supported topology. See `reference/docker-sidecars.md`
 for containerized CPU sidecars, mount layout and image pinning.
 
+## Playbooks
+
+`playbooks/` holds task-oriented guides for changing this repository: adding a
+local tool, adding an adapter, removing or replacing something, changing a
+dependency, evaluating a third-party CLI, and verifying a change. Read the
+matching one before editing. `playbooks/README.md` maps each playbook to its
+command and source of truth.
+
+An agent changing this repository should start there, not in `reference/`,
+which documents how the system behaves rather than how to change it.
+
 ## Tool preference order
 
 Several tools can perform the same operation. Choose by this order, not by tool
