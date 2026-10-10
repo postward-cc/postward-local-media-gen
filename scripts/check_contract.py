@@ -38,6 +38,23 @@ def tracked_files(suffix: str) -> list[Path]:
     return [ROOT / line for line in result.stdout.splitlines() if line]
 
 
+def git_ignored(root: Path, candidates: list[str]) -> set[str]:
+    """Which candidates git ignores: runtime state and generated outputs.
+
+    Documentation legitimately cites paths that only exist after a bootstrap,
+    such as the GPU lease file. Requiring those to exist would fail every fresh
+    checkout, including CI, while catching nothing.
+    """
+    if not candidates:
+        return set()
+    result = subprocess.run(
+        ["git", "check-ignore", "--stdin"], cwd=root, input="\n".join(candidates),
+        capture_output=True, text=True)
+    if result.returncode not in (0, 1):
+        return set()
+    return set(line for line in result.stdout.splitlines() if line)
+
+
 def markdown_files(root: Path) -> list[Path]:
     """Documents to inspect: the tracked ones for this repository, or everything
     under ``root`` when a caller passes a different tree."""
@@ -51,7 +68,16 @@ def markdown_files(root: Path) -> list[Path]:
 def markdown_problems(root: Path = ROOT) -> dict[str, list[str]]:
     """Broken links and referenced files that do not exist, per document."""
     report: dict[str, list[str]] = {}
-    for path in markdown_files(root):
+    documents = markdown_files(root)
+    referenced_paths = sorted({
+        found
+        for path in documents
+        for found in PATH_PATTERN.findall(path.read_text())
+        if "/" in found and not found.startswith(("./", "../"))
+    })
+    ignored = git_ignored(root, referenced_paths)
+
+    for path in documents:
         text = path.read_text()
         problems = []
         for target in LINK_PATTERN.findall(text):
@@ -61,6 +87,8 @@ def markdown_problems(root: Path = ROOT) -> dict[str, list[str]]:
                 problems.append(f"broken link: {target}")
         for referenced in PATH_PATTERN.findall(text):
             if "/" not in referenced or referenced.startswith(("./", "../")):
+                continue
+            if referenced in ignored:
                 continue
             if not (root / referenced).exists():
                 problems.append(f"referenced file does not exist: {referenced}")

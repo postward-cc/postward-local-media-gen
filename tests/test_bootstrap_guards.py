@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -12,9 +13,26 @@ BOOTSTRAP = ROOT / "bootstrap.sh"
 RELOCK = ROOT / "scripts" / "relock.sh"
 
 
+def with_fake_nvidia_smi(directory: str) -> dict[str, str]:
+    """A runner has no GPU. These tests are about the bootstrap's guards, not
+    about hardware detection, so they put a stub driver on PATH.
+    """
+    stub_dir = Path(directory) / "bin"
+    stub_dir.mkdir(parents=True, exist_ok=True)
+    stub = stub_dir / "nvidia-smi"
+    stub.write_text("#!/bin/sh\necho 'stub'\n")
+    stub.chmod(0o755)
+    return {"PATH": f"{stub_dir}{os.pathsep}{os.environ['PATH']}"}
+
+
+#: Resolved once: some of these tests deliberately empty PATH, so looking up
+#: bash at call time would fail before the script under test ever ran.
+BASH = shutil.which("bash")
+
+
 def run_script(script: Path, *args: str, env: dict | None = None):
     environment = {**os.environ, **(env or {})}
-    return subprocess.run(["bash", str(script), *args], capture_output=True,
+    return subprocess.run([BASH, str(script), *args], capture_output=True,
                           text=True, env=environment, timeout=120)
 
 
@@ -59,18 +77,27 @@ class H3LicenseGateTests(unittest.TestCase):
 
 class BootstrapGuardTests(unittest.TestCase):
     def test_unknown_comfyui_version_refuses_instead_of_resolving_another_release(self):
-        result = run_script(BOOTSTRAP, "--dry-run",
-                            env={"COMFYUI_VERSION": "v0.99.0-not-real"})
+        with tempfile.TemporaryDirectory() as directory:
+            result = run_script(BOOTSTRAP, "--dry-run",
+                                env={"COMFYUI_VERSION": "v0.99.0-not-real",
+                                     **with_fake_nvidia_smi(directory)})
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("requirements-comfyui-v0.99.0-not-real.txt", result.stderr)
         self.assertIn("--refresh-comfyui", result.stderr)
 
     def test_dry_run_never_installs_anything(self):
-        result = run_script(BOOTSTRAP, "--dry-run")
+        with tempfile.TemporaryDirectory() as directory:
+            result = run_script(BOOTSTRAP, "--dry-run",
+                                env=with_fake_nvidia_smi(directory))
 
-        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("no files or packages were changed", result.stdout)
+
+    # The nvidia-smi prerequisite is documented in INSTALL.md but is not tested
+    # here: the only way to remove it from PATH also removes dirname, so the
+    # script fails before reaching the check. Asserting that would test the
+    # sandbox, not the guard.
 
 
 class RelockGuardTests(unittest.TestCase):
