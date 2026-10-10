@@ -6,7 +6,8 @@ XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 VIBEVOICE_HOME="${VIBEVOICE_HOME:-$XDG_DATA_HOME/postward/vibevoice}"
 SOURCE_DIR="${VIBEVOICE_SOURCE:-$VIBEVOICE_HOME/source}"
 VENV_DIR="${VIBEVOICE_HOME}/venv"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+UV_BIN="${UV_BIN:-uv}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
 SOURCE_REPO="https://github.com/vibevoice-community/VibeVoice.git"
 SOURCE_REVISION="952326ddb264062466a888cf32a5b2f4e803e16e"
@@ -14,11 +15,12 @@ if ! command -v git >/dev/null; then
   echo "ERROR: git is required to clone the pinned VibeVoice voice presets." >&2
   exit 2
 fi
-if ! command -v "$PYTHON_BIN" >/dev/null; then
-  echo "ERROR: Python executable not found: $PYTHON_BIN" >&2
+if ! command -v "$UV_BIN" >/dev/null; then
+  echo "ERROR: uv is required to create the pinned TTS runtime interpreter." >&2
+  echo "  Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
+  echo "  or set UV_BIN to an existing uv executable." >&2
   exit 2
 fi
-"$PYTHON_BIN" -c 'import sys; assert (3, 11) <= sys.version_info[:2] < (3, 14), sys.version'
 
 mkdir -p "$VIBEVOICE_HOME"
 FREE_GB="$(df -BG --output=avail "$VIBEVOICE_HOME" | tr -dc '0-9')"
@@ -44,13 +46,13 @@ else
   fi
 fi
 
+"$UV_BIN" python install "$PYTHON_VERSION"
 if [[ ! -x "$VENV_DIR/bin/python" ]]; then
-  "$PYTHON_BIN" -m venv "$VENV_DIR"
+  "$UV_BIN" venv --python "$PYTHON_VERSION" "$VENV_DIR"
 fi
 VENV_PYTHON="$VENV_DIR/bin/python"
-"$VENV_PYTHON" -m pip install --upgrade pip
-"$VENV_PYTHON" -m pip install --index-url "$TORCH_INDEX_URL" "torch==2.11.0"
-"$VENV_PYTHON" -m pip install \
+"$UV_BIN" pip install --python "$VENV_PYTHON" --index-url "$TORCH_INDEX_URL" "torch==2.11.0"
+"$UV_BIN" pip install --python "$VENV_PYTHON" \
   "transformers==5.17.0" \
   "diffusers==0.35.2" \
   accelerate soundfile librosa

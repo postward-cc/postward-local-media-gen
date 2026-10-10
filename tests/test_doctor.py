@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -71,6 +73,54 @@ class CommandTimeoutTests(unittest.TestCase):
         with patch.object(doctor.subprocess, "check_output",
                           side_effect=subprocess.TimeoutExpired(cmd="x", timeout=1)):
             self.assertIsNone(doctor.command("true"))
+
+
+class PythonRuntimeTests(unittest.TestCase):
+    def test_broken_venv_is_reported_without_raising(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "venv" / "bin" / "python"
+
+            info = doctor.python_runtime_info(missing)
+
+        self.assertFalse(info["venv_python_exists"])
+        self.assertFalse(info["venv_python_usable"])
+        self.assertIsNone(info["venv_python_version"])
+
+    def test_dangling_symlink_counts_as_not_usable(self):
+        with tempfile.TemporaryDirectory() as directory:
+            venv = Path(directory) / "venv"
+            (venv / "bin").mkdir(parents=True)
+            (venv / "bin" / "python").symlink_to(Path(directory) / "gone" / "python3")
+
+            info = doctor.python_runtime_info(venv)
+
+        self.assertFalse(info["venv_python_exists"])
+        self.assertFalse(info["venv_python_usable"])
+
+    def test_usable_venv_reports_its_interpreter_version(self):
+        with tempfile.TemporaryDirectory() as directory:
+            venv = Path(directory) / "venv"
+            bin_dir = venv / "bin"
+            bin_dir.mkdir(parents=True)
+            python = bin_dir / "python"
+            python.write_text("#!/bin/sh\necho 'Python 3.12.15'\n")
+            python.chmod(0o755)
+
+            info = doctor.python_runtime_info(venv)
+
+        self.assertTrue(info["venv_python_usable"])
+        self.assertEqual(info["venv_python_version"], "Python 3.12.15")
+
+    def test_running_interpreter_is_checked_against_the_supported_range(self):
+        info = doctor.python_runtime_info(Path("/nonexistent"))
+
+        expected = f"{sys.version_info.major}.{sys.version_info.minor}"
+        self.assertEqual(info["doctor_python"], expected)
+        self.assertEqual(
+            info["doctor_python_in_range"],
+            (3, 11) <= sys.version_info[:2] < (3, 14),
+        )
+        self.assertEqual(info["pinned_version"], doctor.PINNED_PYTHON_VERSION)
 
 
 if __name__ == "__main__":

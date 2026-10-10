@@ -1,0 +1,9 @@
+# Core dependencies of this repository's own adapters.
+#
+# Everything else in forge_runtime/, voice_runtime/ and scripts/ runs on the
+# standard library alone. Only the masked compositor needs a third-party
+# package, and it is declared here instead of arriving transitively through
+# ComfyUI's requirements.txt.
+#
+# Installed by ./bootstrap.sh into comfyui-runtime/venv before ComfyUI.
+pillow==12.3.0

@@ -153,6 +153,7 @@ postward-local-media-gen/
 ├── skill.json                            machine-readable skill manifest
 ├── INSTALL.md                            installation contract
 ├── bootstrap.sh                          isolated idempotent bootstrap
+├── requirements-core.txt                 this repo's own dependency (Pillow)
 ├── CONTEXT.md                            domain glossary
 ├── README.md                             this file
 ├── docs/adr/                             architectural decisions
@@ -209,9 +210,11 @@ postward-local-media-gen/
 ./bootstrap.sh
 ```
 
-The bootstrap creates an isolated environment under `comfyui-runtime/venv/`,
-installs ComfyUI and its custom nodes, and does not download model weights.
-Use:
+The bootstrap creates an isolated environment under `comfyui-runtime/venv/`
+using [`uv`](https://docs.astral.sh/uv/), installs ComfyUI and its custom
+nodes, and does not download model weights. `uv` supplies and pins the
+interpreter (CPython 3.12 by default, override with `PYTHON_VERSION`), so the
+environment survives a system Python upgrade. Use:
 
 ```bash
 python scripts/doctor.py

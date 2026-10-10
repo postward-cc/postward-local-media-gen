@@ -25,9 +25,13 @@ weights. Never commit workstation-specific paths, private inputs, generated
 assets or runtime manifests to this repository.
 
 The main bootstrap is idempotent and installs under
-`comfyui-runtime/venv` and `comfyui-runtime/ComfyUI`. It does not download H3
-weights. Read `INSTALL.md` for choices and `skill.json` for the machine-readable
-contract.
+`comfyui-runtime/venv` and `comfyui-runtime/ComfyUI`. It requires `uv`, which
+supplies and pins the interpreter (CPython 3.12 by default, `PYTHON_VERSION`
+overrides); do not create the environment with `python -m venv`, because a
+system-interpreter venv dies when that interpreter is upgraded or removed.
+`scripts/doctor.py` reports both interpreters under `python_runtime`. The
+bootstrap does not download H3 weights. Read `INSTALL.md` for choices and
+`skill.json` for the machine-readable contract.
 
 
 ## First-time local configuration

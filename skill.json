@@ -62,7 +62,11 @@
   "runtime": {
     "platform": "linux",
     "gpu": "nvidia-cuda",
+    "environment_manager": "uv",
+    "pinned_python": "3.12",
     "python": ">=3.11,<3.14",
+    "python_source": "uv-managed; not the system interpreter",
+    "own_dependencies": "requirements-core.txt",
     "minimum_vram_gb": 8,
     "recommended_ram_gb": 32
   },

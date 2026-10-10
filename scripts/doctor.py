@@ -87,6 +87,32 @@ def memory_gb() -> float | None:
         return None
 
 
+#: Interpreter range this repository supports, and the version its bootstrap
+#: pins. ``uv`` manages that interpreter, so an existing venv survives a system
+#: Python upgrade; a venv created by ``python -m venv`` does not.
+PYTHON_MIN = (3, 11)
+PYTHON_MAX = (3, 14)
+PINNED_PYTHON_VERSION = "3.12"
+
+
+def python_runtime_info(venv: Path = RUNTIME / "venv") -> dict:
+    """Report the interpreter running doctor and the pinned runtime venv.
+
+    A venv whose interpreter no longer exists — the usual symptom of a system
+    Python upgrade — is reported as broken rather than raising.
+    """
+    venv_python = venv / "bin" / "python"
+    return {
+        "doctor_python": f"{sys.version_info.major}.{sys.version_info.minor}",
+        "doctor_python_in_range": PYTHON_MIN <= sys.version_info[:2] < PYTHON_MAX,
+        "pinned_version": PINNED_PYTHON_VERSION,
+        "venv_python": str(venv_python),
+        "venv_python_exists": venv_python.exists(),
+        "venv_python_usable": os.access(venv_python, os.X_OK),
+        "venv_python_version": command(str(venv_python), "-V"),
+    }
+
+
 def torch_info() -> dict:
     """Probe the runtime venv, even when doctor runs from system Python."""
     probe = RUNTIME / "venv" / "bin" / "python"
@@ -200,6 +226,7 @@ def main() -> int:
         "gpu": gpu,
         "torch": torch,
         "ram_gb": memory_gb(),
+        "python_runtime": python_runtime_info(),
         "disk_free_gb": round(disk.free / 1024**3, 1),
         "disk_warning": disk.free < 20 * 1024**3,
         "weights_present": weights,

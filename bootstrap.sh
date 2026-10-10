@@ -5,7 +5,8 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNTIME="$ROOT/comfyui-runtime"
 VENV="$RUNTIME/venv"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+UV_BIN="${UV_BIN:-uv}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.12}"
 TORCH_INDEX_URL="${TORCH_INDEX_URL:-https://download.pytorch.org/whl/cu128}"
 COMFYUI_VERSION="${COMFYUI_VERSION:-v0.36.0}"
 COMFYUI_REPO="${COMFYUI_REPO:-https://github.com/comfyanonymous/ComfyUI.git}"
@@ -25,7 +26,8 @@ Options:
   -h, --help           Show this help.
 
 Environment:
-  PYTHON_BIN            Python executable used only to create the venv.
+  UV_BIN                uv executable that manages the interpreter and venv.
+  PYTHON_VERSION        Interpreter version to pin; default is 3.12.
   TORCH_INDEX_URL       PyTorch wheel index; default is cu128.
   COMFYUI_VERSION       ComfyUI git tag; default is v0.36.0.
 EOF
@@ -55,8 +57,13 @@ done
 if ! command -v git >/dev/null; then
   echo "ERROR: git is required." >&2; exit 1
 fi
-if ! command -v "$PYTHON_BIN" >/dev/null; then
-  echo "ERROR: Python executable not found: $PYTHON_BIN" >&2; exit 1
+if ! command -v "$UV_BIN" >/dev/null; then
+  cat >&2 <<EOF
+ERROR: uv is required to create the pinned runtime interpreter.
+  Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh
+  or set UV_BIN to an existing uv executable.
+EOF
+  exit 1
 fi
 if ! command -v nvidia-smi >/dev/null; then
   echo "ERROR: nvidia-smi not found. Install a compatible NVIDIA driver first." >&2; exit 1
@@ -66,13 +73,18 @@ run mkdir -p "$RUNTIME" "$RUNTIME/downloads" "$RUNTIME/hf-cache" \
   "$RUNTIME/logs" "$RUNTIME/outputs" "$RUNTIME/state" "$RUNTIME/workflows"
 
 if (( ! SKIP_PYTHON_DEPS )); then
+  # uv manages the interpreter itself, so the venv keeps working when the
+  # workstation's system Python is upgraded or removed underneath it.
+  echo "Pinned interpreter: CPython $PYTHON_VERSION (managed by $UV_BIN)"
+  run "$UV_BIN" python install "$PYTHON_VERSION"
   if [[ ! -x "$VENV/bin/python" ]]; then
     echo "Creating isolated Python environment: $VENV"
-    run "$PYTHON_BIN" -m venv "$VENV"
+    run "$UV_BIN" venv --python "$PYTHON_VERSION" "$VENV"
   fi
   VENV_PYTHON="$VENV/bin/python"
-  run "$VENV_PYTHON" -m pip install --upgrade pip
-  run "$VENV_PYTHON" -m pip install torch torchvision torchaudio --index-url "$TORCH_INDEX_URL"
+  run "$UV_BIN" pip install --python "$VENV_PYTHON" --index-url "$TORCH_INDEX_URL" \
+    torch torchvision torchaudio
+  run "$UV_BIN" pip install --python "$VENV_PYTHON" -r "$ROOT/requirements-core.txt"
 else
   VENV_PYTHON="$VENV/bin/python"
   if [[ ! -x "$VENV_PYTHON" && ! $DRY_RUN ]]; then
@@ -86,8 +98,8 @@ if (( ! SKIP_COMFYUI )); then
     run git clone --depth 1 --branch "$COMFYUI_VERSION" "$COMFYUI_REPO" "$RUNTIME/ComfyUI"
   fi
   if (( ! SKIP_PYTHON_DEPS )); then
-    run "$VENV_PYTHON" -m pip install -r "$RUNTIME/ComfyUI/requirements.txt"
-    run "$VENV_PYTHON" -m pip install sageattention nvidia-vfx 'huggingface_hub[cli]>=0.24'
+    run "$UV_BIN" pip install --python "$VENV_PYTHON" -r "$RUNTIME/ComfyUI/requirements.txt"
+    run "$UV_BIN" pip install --python "$VENV_PYTHON" sageattention nvidia-vfx 'huggingface_hub[cli]>=0.24'
   fi
 
   RTX_DIR="$RUNTIME/ComfyUI/custom_nodes/Nvidia_RTX_Nodes_ComfyUI"

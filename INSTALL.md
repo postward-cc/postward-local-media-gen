@@ -4,6 +4,22 @@ This repository is both an OMP skill and a local runtime bootstrap. A model
 can clone the repo, read `SKILL.md`, run the doctor, and bootstrap the local
 adapters without modifying system Python or the system CUDA toolkit.
 
+## Prerequisites
+
+- NVIDIA driver (`nvidia-smi`) and git.
+- [`uv`](https://docs.astral.sh/uv/), which supplies the interpreter and the
+  venv:
+
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
+
+  `uv` is used instead of `python -m venv` because a venv created that way
+  symlinks to the workstation's system interpreter. When that interpreter is
+  upgraded or removed, the venv stops existing and every adapter in it dies
+  with it. A `uv`-managed interpreter lives in uv's own directory and survives
+  that.
+
 ## Fast path
 
 ```bash
@@ -19,12 +35,19 @@ cd postward-local-media-gen
 
 Inside `comfyui-runtime/venv/` only:
 
+- CPython 3.12, pinned and managed by `uv` (override with `PYTHON_VERSION`)
 - PyTorch, torchvision, torchaudio from the cu128 wheel index
+- the repository's own dependency, Pillow, from `requirements-core.txt`
 - ComfyUI v0.36.0
 - Sage Attention
 - `nvidia-vfx`
 - `huggingface_hub` CLI support
 - `Comfy-Org/Nvidia_RTX_Nodes_ComfyUI`
+
+Everything else in `forge_runtime/`, `voice_runtime/` and `scripts/` runs on
+the standard library alone, under whatever interpreter invokes the script.
+`scripts/doctor.py` reports both interpreters under `python_runtime`, including
+whether the venv is still usable.
 
 It also creates the runtime directories and runs `scripts/doctor.py` using the
 new venv. The system Python and `/usr/local/cuda` are not changed.
@@ -159,7 +182,8 @@ VibeVoice uses an isolated Python environment, source checkout and model cache
 under the XDG data directory by default; set `VIBEVOICE_HOME` to choose another
 user-owned data directory. It does not alter the ComfyUI environment or system
 Python. Bootstrap clones pinned source voice samples and installs the
-Transformers 5.17 runtime, but does not fetch model weights:
+Transformers 5.17 runtime into its own `uv`-managed CPython 3.12, but does not
+fetch model weights:
 
 ```bash
 ./scripts/bootstrap_vibevoice.sh
