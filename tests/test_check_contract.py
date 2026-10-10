@@ -63,6 +63,73 @@ class MarkdownProblemTests(unittest.TestCase):
         self.assertIn("README.md", check_contract.markdown_problems(root))
 
 
+class FrontmatterTests(unittest.TestCase):
+    SKILL = ("---\n"
+             "name: a-skill\n"
+             "description: |\n"
+             "  line one\n"
+             "  line two\n"
+             "metadata:\n"
+             "  version: 1.2.3\n"
+             "---\n\n# Body\n")
+
+    def test_scalars_and_one_level_of_nesting_are_read(self):
+        fields = check_contract.frontmatter(self.SKILL)
+
+        self.assertEqual(fields["name"], "a-skill")
+        self.assertEqual(fields["metadata.version"], "1.2.3")
+        self.assertIn("line one", fields["description"])
+
+    def test_missing_frontmatter_yields_nothing(self):
+        self.assertEqual(check_contract.frontmatter("# Just a heading\n"), {})
+
+    def test_unterminated_frontmatter_yields_nothing(self):
+        self.assertEqual(check_contract.frontmatter("---\nname: x\n"), {})
+
+    def _root(self, skill: str, version: str = "1.2.3") -> Path:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        (root / "SKILL.md").write_text(skill)
+        (root / "skill.json").write_text(json.dumps(
+            {"version": version, "external_tools": {"ids": []}}))
+        return root
+
+    def test_complete_frontmatter_passes(self):
+        self.assertEqual(
+            check_contract.skill_package_problems(self._root(self.SKILL)), [])
+
+    def test_missing_frontmatter_is_reported(self):
+        problems = check_contract.skill_package_problems(self._root("# Body\n"))
+
+        self.assertEqual(len(problems), 1)
+        self.assertIn("no YAML frontmatter", problems[0])
+
+    def test_missing_version_is_reported(self):
+        skill = self.SKILL.replace("metadata:\n  version: 1.2.3\n", "")
+
+        problems = check_contract.skill_package_problems(self._root(skill))
+
+        self.assertTrue(any("metadata.version" in p for p in problems))
+
+    def test_version_disagreement_with_the_manifest_is_reported(self):
+        problems = check_contract.skill_package_problems(
+            self._root(self.SKILL, version="9.9.9"))
+
+        self.assertEqual(len(problems), 1)
+        self.assertIn("1.2.3", problems[0])
+        self.assertIn("9.9.9", problems[0])
+
+    def test_a_top_level_version_is_not_mistaken_for_the_packaged_one(self):
+        """The registry rejects a top-level version; it reads metadata.version."""
+        skill = self.SKILL.replace("metadata:\n  version: 1.2.3\n",
+                                  "version: 1.2.3\n")
+
+        problems = check_contract.skill_package_problems(self._root(skill))
+
+        self.assertTrue(any("metadata.version" in p for p in problems))
+
+
 class ManifestProblemTests(unittest.TestCase):
     def _root(self, manifest: dict) -> Path:
         directory = tempfile.TemporaryDirectory()

@@ -93,10 +93,80 @@ def markdown_problems(root: Path = ROOT) -> dict[str, list[str]]:
     return report
 
 
+def frontmatter(text: str) -> dict[str, str]:
+    """Parse the leading YAML frontmatter without a YAML dependency.
+
+    Supports scalar values and ``|`` / ``>`` block scalars, plus one level of
+    nesting — which is all this check needs. The repository runs on the
+    standard library, and a parser that silently mis-read a block scalar would
+    be worse than none: it would report a field as present while the harness
+    reads something else.
+    """
+    if not text.startswith("---\n"):
+        return {}
+    end = text.find("\n---\n", 3)
+    if end == -1:
+        return {}
+    lines = text[4:end].splitlines()
+    fields: dict[str, str] = {}
+    index = 0
+    while index < len(lines):
+        line = lines[index]
+        index += 1
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if line[:1].isspace():          # handled while reading its parent
+            continue
+        key, _, value = line.partition(":")
+        key, value = key.strip(), value.strip()
+        if value in ("|", ">", "|-", ">-"):
+            block = []
+            while index < len(lines) and (not lines[index].strip()
+                                          or lines[index][:1].isspace()):
+                block.append(lines[index].strip())
+                index += 1
+            fields[key] = "\n".join(part for part in block if part)
+            continue
+        fields[key] = value
+        for nested in lines[index:]:
+            if not nested[:1].isspace():
+                break
+            if not nested.strip():
+                continue
+            child, _, child_value = nested.strip().partition(":")
+            fields[f"{key}.{child}"] = child_value.strip()
+    return fields
+
+
+def skill_package_problems(root: Path = ROOT) -> list[str]:
+    """The packaged skill must carry what a harness reads, and one version.
+
+    The version lives in ``metadata.version`` inside SKILL.md, not as a
+    top-level field, and it must agree with ``skill.json``. Both facts were
+    learned the hard way: a top-level ``version`` is rejected by the registry,
+    and ``omp skill version patch`` starts from what it finds in the frontmatter.
+    """
+    fields = frontmatter((root / "SKILL.md").read_text())
+    problems = []
+    if not fields:
+        return ["SKILL.md has no YAML frontmatter; harnesses cannot match this skill"]
+    for required in ("name", "description", "metadata.version"):
+        if not fields.get(required):
+            problems.append(f"SKILL.md frontmatter is missing {required}")
+    manifest_version = json.loads((root / "skill.json").read_text()).get("version")
+    packaged = fields.get("metadata.version")
+    if packaged and manifest_version and packaged != manifest_version:
+        problems.append(
+            f"SKILL.md metadata.version is {packaged} but skill.json says "
+            f"{manifest_version}; they must be one version"
+        )
+    return problems
+
+
 def manifest_problems(root: Path = ROOT) -> list[str]:
     """skill.json must agree with what doctor actually probes."""
     manifest = json.loads((root / "skill.json").read_text())
-    declared = set(manifest["external_tools"]["ids"])
+    declared = set(manifest["external_tools"].get("ids", []))
     probed = {entry[0] for entry in doctor.EXTERNAL_TOOLS}
     problems = []
     for tool in sorted(declared - probed):
@@ -115,11 +185,13 @@ def manifest_problems(root: Path = ROOT) -> list[str]:
 def report(root: Path = ROOT) -> dict:
     docs = markdown_problems(root)
     manifest = manifest_problems(root)
-    ok = not docs and not manifest
+    package = skill_package_problems(root)
+    ok = not docs and not manifest and not package
     return {
         "documents_checked": len(markdown_files(root)),
         "markdown_problems": docs,
         "manifest_problems": manifest,
+        "package_problems": package,
         "status": "ok" if ok else "problems",
     }
 
