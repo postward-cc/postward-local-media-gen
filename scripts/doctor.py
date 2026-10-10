@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -93,6 +94,43 @@ def memory_gb() -> float | None:
 PYTHON_MIN = (3, 11)
 PYTHON_MAX = (3, 14)
 PINNED_PYTHON_VERSION = "3.12"
+
+#: CUDA build tag the pinned PyTorch index publishes. A torch wheel without it
+#: installs cleanly and only fails at inference time, with a missing-kernel
+#: error far away from its cause, so the lock is checked before it is trusted.
+EXPECTED_CUDA_TAG = "cu128"
+CUDA_WHEEL_PACKAGES = ("torch", "torchvision", "torchaudio")
+
+
+def cuda_tag_problems(lock_text: str, expected: str = EXPECTED_CUDA_TAG) -> list[str]:
+    """Report torch-family entries in a requirements lock without the CUDA tag.
+
+    Index ordering during resolution decides whether torch comes from PyPI or
+    from the PyTorch CUDA index, and getting it backwards is silent. This turns
+    that decision into a check.
+    """
+    problems = []
+    for package in CUDA_WHEEL_PACKAGES:
+        for match in re.finditer(rf"^{package}==(\S+)", lock_text, re.MULTILINE):
+            version = match.group(1).rstrip("\\").strip()
+            if not version.endswith(f"+{expected}"):
+                problems.append(
+                    f"{package}=={version} lacks the +{expected} CUDA build"
+                )
+    return problems
+
+
+def check_lock(path: str) -> int:
+    """``doctor.py check-lock <file>``: exit non-zero on an unusable lock."""
+    try:
+        text = Path(path).read_text()
+    except OSError as exc:
+        print(json.dumps({"lock": path, "error": str(exc)}))
+        return 2
+    problems = cuda_tag_problems(text)
+    print(json.dumps({"lock": path, "expected_cuda_tag": EXPECTED_CUDA_TAG,
+                      "problems": problems}, indent=2))
+    return 1 if problems else 0
 
 
 def python_runtime_info(venv: Path = RUNTIME / "venv") -> dict:
@@ -193,6 +231,11 @@ def forge_info(client_factory=ForgeClient) -> dict:
     }
 
 def main() -> int:
+    if sys.argv[1:2] == ["check-lock"]:
+        if len(sys.argv) != 3:
+            print("usage: doctor.py check-lock <requirements.lock>")
+            return 2
+        return check_lock(sys.argv[2])
     gpu_query = command(
         "nvidia-smi", "--query-gpu=name,memory.total,memory.free,driver_version",
         "--format=csv,noheader,nounits",

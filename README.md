@@ -154,6 +154,8 @@ postward-local-media-gen/
 ├── INSTALL.md                            installation contract
 ├── bootstrap.sh                          isolated idempotent bootstrap
 ├── requirements-core.txt                 this repo's own dependency (Pillow)
+├── requirements-comfyui-extras.txt       ComfyUI CUDA extras
+├── requirements-comfyui.lock             resolved runtime, exact versions + hashes
 ├── CONTEXT.md                            domain glossary
 ├── README.md                             this file
 ├── docs/adr/                             architectural decisions
@@ -180,6 +182,7 @@ postward-local-media-gen/
 │   ├── forge_job.py                      Forge wrapper via shared GPU lock
 │   ├── compose_masked_edit.py            CPU-only masked image compositor
 │   ├── job_queue.py
+│   ├── relock.sh                         regenerates requirements-comfyui.lock
 │   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
 ├── comfyui-runtime/                      ComfyUI implementation adapter
 │   ├── RUNBOOK.md

@@ -123,5 +123,49 @@ class PythonRuntimeTests(unittest.TestCase):
         self.assertEqual(info["pinned_version"], doctor.PINNED_PYTHON_VERSION)
 
 
+class CudaTagCheckTests(unittest.TestCase):
+    def test_lock_without_cuda_build_is_rejected(self):
+        lock = "torch==2.14.1 \\\n    --hash=sha256:aa\ntorchvision==0.29.1\ntorchaudio==2.11.0\n"
+
+        problems = doctor.cuda_tag_problems(lock)
+
+        self.assertEqual(len(problems), 3)
+        self.assertTrue(all("+cu128" in problem for problem in problems))
+
+    def test_lock_with_cuda_build_passes(self):
+        lock = ("torch==2.11.0+cu128 \\\n    --hash=sha256:aa\n"
+                "torchvision==0.26.0+cu128 \\\n    --hash=sha256:bb\n"
+                "torchaudio==2.11.0+cu128 \\\n    --hash=sha256:cc\n")
+
+        self.assertEqual(doctor.cuda_tag_problems(lock), [])
+
+    def test_expected_tag_is_configurable(self):
+        lock = "torch==2.11.0+cu126\n"
+
+        self.assertEqual(doctor.cuda_tag_problems(lock, "cu126"), [])
+        self.assertTrue(doctor.cuda_tag_problems(lock, "cu128"))
+
+    def test_only_the_torch_family_is_checked(self):
+        lock = "triton==3.6.0\nnumpy==2.5.3\nnvidia-vfx==0.2.0.0\n"
+
+        self.assertEqual(doctor.cuda_tag_problems(lock), [])
+
+    def test_check_lock_command_reports_problems_and_fails(self):
+        import json
+        import subprocess
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as directory:
+            lock = Path(directory) / "bad.lock"
+            lock.write_text("torch==2.14.1\n")
+            completed = subprocess.run(
+                [sys.executable, str(ROOT / "scripts" / "doctor.py"), "check-lock", str(lock)],
+                capture_output=True, text=True,
+            )
+
+        self.assertEqual(completed.returncode, 1)
+        self.assertTrue(json.loads(completed.stdout)["problems"])
+
+
 if __name__ == "__main__":
     unittest.main()

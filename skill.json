@@ -67,6 +67,10 @@
     "python": ">=3.11,<3.14",
     "python_source": "uv-managed; not the system interpreter",
     "own_dependencies": "requirements-core.txt",
+    "lockfile": "requirements-comfyui.lock",
+    "relock_command": "./scripts/relock.sh",
+    "lock_verification": "python scripts/doctor.py check-lock requirements-comfyui.lock",
+    "cuda_build_tag": "cu128",
     "minimum_vram_gb": 8,
     "recommended_ram_gb": 32
   },

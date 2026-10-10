@@ -82,9 +82,6 @@ if (( ! SKIP_PYTHON_DEPS )); then
     run "$UV_BIN" venv --python "$PYTHON_VERSION" "$VENV"
   fi
   VENV_PYTHON="$VENV/bin/python"
-  run "$UV_BIN" pip install --python "$VENV_PYTHON" --index-url "$TORCH_INDEX_URL" \
-    torch torchvision torchaudio
-  run "$UV_BIN" pip install --python "$VENV_PYTHON" -r "$ROOT/requirements-core.txt"
 else
   VENV_PYTHON="$VENV/bin/python"
   if [[ ! -x "$VENV_PYTHON" && ! $DRY_RUN ]]; then
@@ -97,14 +94,25 @@ if (( ! SKIP_COMFYUI )); then
   if [[ ! -d "$RUNTIME/ComfyUI/.git" ]]; then
     run git clone --depth 1 --branch "$COMFYUI_VERSION" "$COMFYUI_REPO" "$RUNTIME/ComfyUI"
   fi
-  if (( ! SKIP_PYTHON_DEPS )); then
-    run "$UV_BIN" pip install --python "$VENV_PYTHON" -r "$RUNTIME/ComfyUI/requirements.txt"
-    run "$UV_BIN" pip install --python "$VENV_PYTHON" sageattention nvidia-vfx 'huggingface_hub[cli]>=0.24'
-  fi
 
   RTX_DIR="$RUNTIME/ComfyUI/custom_nodes/Nvidia_RTX_Nodes_ComfyUI"
   if [[ ! -d "$RTX_DIR/.git" ]]; then
     run git clone --depth 1 "$RTX_NODES_REPO" "$RTX_DIR"
+  fi
+fi
+
+if (( ! SKIP_PYTHON_DEPS )); then
+  # The lock pins exact versions and artifact hashes for this repository's own
+  # dependency, the ComfyUI runtime and the CUDA extras together. Regenerate it
+  # with ./scripts/relock.sh whenever COMFYUI_VERSION or either requirements
+  # file changes.
+  echo "Compiling the ComfyUI runtime lock from the pinned checkout"
+  run "$ROOT/scripts/relock.sh"
+  run python3 "$ROOT/scripts/doctor.py" check-lock "$ROOT/requirements-comfyui.lock"
+  if (( ! DRY_RUN )); then
+    echo "Installing the locked runtime into $VENV"
+    run "$UV_BIN" pip install --python "$VENV_PYTHON" --require-hashes \
+      -r "$ROOT/requirements-comfyui.lock"
   fi
 fi
 

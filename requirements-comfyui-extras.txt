@@ -1,0 +1,8 @@
+# ComfyUI runtime extras that this repository installs on top of the pinned
+# ComfyUI release. Kept separate from requirements-core.txt because they belong
+# to the video runtime, not to the repository's own adapters.
+#
+# Compiled together with ComfyUI/requirements.txt by ./bootstrap.sh.
+sageattention
+nvidia-vfx
+huggingface_hub>=0.24
