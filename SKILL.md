@@ -281,7 +281,7 @@ is implemented here, and none should be attempted through an adapter:
 
 | Not implemented | Use instead |
 |---|---|
-| Video timeline editing, cuts, transitions | `ffmpeg` for extraction and assembly; see `reference/optional-tools.md` |
+| Video editing: cuts, concat, speed, reverse, crop, audio, watermarks, burned subtitles | `ffmpeg`, or the tools of a mounted local MCP server — see `reference/optional-tools.md` |
 | Layered image editing, PSD authoring | `reference/optional-tools.md` |
 | Vector illustration and SVG authoring | Inkscape, or `reference/optional-tools.md` |
 | RAW photo development | darktable-cli, rawtherapee-cli |
