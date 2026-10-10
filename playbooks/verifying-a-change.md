@@ -55,6 +55,33 @@ grep -rn '<name-you-removed>' . | grep -v '^./ComfyUI'   # expect nothing
 For a lock or dependency change, read the diff of the lock header and the
 changed package list — that is where a wrong index order shows up.
 
+## Ship it
+
+Work on a branch and open a pull request. Direct pushes to `main` bypass the
+gate, which is the only reason the gate exists.
+
+```bash
+git switch -c <short-description>
+# ... edit, then:
+./scripts/check.sh
+./scripts/check_local.sh     # local-only checks never run in CI
+git push -u origin <short-description>
+gh pr create --title "<what changed>" --body "<why, and what you verified>"
+```
+
+CI runs `scripts/check.sh` on the pull request. Because the ComfyUI checks are
+local-only, **run `check_local.sh` before pushing** — nothing else will catch a
+broken workflow JSON.
+
+In the pull request body, state what you verified by running it and what you
+did not. "Verified: masked composition on a real 1024 px inpaint, protected
+pixels exact. Not run: video generation, no GPU on this machine." is more
+useful than silence, and it is what the next person needs to decide whether to
+trust the change.
+
+Merging is the review. `main` is expected to receive pull requests, never
+direct pushes.
+
 ## Commit message
 
 State what changed and what it fixes. If something was verified by running it,
