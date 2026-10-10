@@ -239,7 +239,9 @@ for containerized CPU sidecars, mount layout and image pinning.
 ### When this table does not cover the need
 
 The table is a starting point, not the universe, and `external_tools` probes
-only what this repository declares. Resolve a gap in this order:
+only what this repository declares. For capabilities this table does not reach,
+`reference/optional-tools.md` maps the capability to external local tools, with
+their licences and what each is good at. Resolve a gap in this order:
 
 1. Does an adapter already do it? Check before assuming it does not.
 2. Does the user's machine already have a suitable binary? Ask or check; never
@@ -252,6 +254,26 @@ only what this repository declares. Resolve a gap in this order:
 Never close a gap with a hosted service or by uploading assets to obtain a
 tool. If the need is a capability rather than a local binary, the harness's own
 skill discovery may cover it; that finds capabilities, not local programs.
+
+### What this skill does not do
+
+Knowing where the edge is beats discovering it mid-task. None of the following
+is implemented here, and none should be attempted through an adapter:
+
+| Not implemented | Use instead |
+|---|---|
+| Video timeline editing, cuts, transitions | `ffmpeg` for extraction and assembly; see `reference/optional-tools.md` |
+| Layered image editing, PSD authoring | `reference/optional-tools.md` |
+| Vector illustration and SVG authoring | Inkscape, or `reference/optional-tools.md` |
+| RAW photo development | darktable-cli, rawtherapee-cli |
+| PDF assembly, encryption, forms | qpdf, Ghostscript, mutool |
+| Page layout and publishing | `reference/optional-tools.md` |
+
+Generation is what this repository does. Everything downstream of a finished
+asset is either a single-command conversion or a different application. When
+something here has no local answer, `reference/optional-tools.md` maps the
+capability to external tools, and the resolution order below says what to do
+when none of them fit.
 
 ## Playbooks
 
