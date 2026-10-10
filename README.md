@@ -148,6 +148,24 @@ hosted service is never an option, and one step runs one engine.
 than assumed.
 
 
+## Changing this repository
+
+Before editing anything, read [`playbooks/README.md`](playbooks/README.md). It
+maps each task — adding a local tool, adding an adapter, removing or replacing
+something, changing a dependency, evaluating a third-party CLI, verifying a
+change — to the playbook that covers it and to the command that answers the
+question. The index also lists which file is the source of truth for each
+concern, so an agent does not have to guess.
+
+[`reference/`](reference/) documents how the system behaves;
+[`playbooks/`](playbooks/) documents how to change it.
+
+```bash
+./scripts/check.sh        # what CI runs: offline, no GPU
+./scripts/check_local.sh  # the above plus the local-only ComfyUI checks
+```
+
+
 ## Repository layout
 
 ```text
