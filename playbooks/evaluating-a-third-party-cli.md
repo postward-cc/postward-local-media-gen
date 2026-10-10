@@ -1,8 +1,12 @@
 # Evaluating a third-party CLI
 
 Someone proposes an external tool: replace an adapter, add a capability, or sit
-beside what exists. Evaluate it before adopting it. The PhotoCraft evaluation
-that produced `SKILL.md` → **Tooling alternatives** is the worked example.
+beside what exists. Evaluate it before adopting it.
+
+The worked example is
+[`reference/third-party-evaluation.md`](../reference/third-party-evaluation.md):
+the Crafting Apps, measured against this repository and left pending upstream.
+Read it before repeating that research.
 
 ## Establish the facts before forming an opinion
 
@@ -66,6 +70,11 @@ Write the outcome into the repository, not into a chat:
 - rejected → one line in the commit or an ADR saying what was measured and why
   it lost. A rejected tool with a recorded reason is not re-litigated in six
   months; a rejection with no record is.
+
+An evaluation with no outcome yet is still an evaluation: record the
+measurements and mark the status pending, as
+[`reference/third-party-evaluation.md`](../reference/third-party-evaluation.md)
+does. Research that lives only in a conversation has to be redone.
 
 ## Do not
 
