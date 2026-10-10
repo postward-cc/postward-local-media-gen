@@ -207,7 +207,8 @@ postward-local-media-gen/
 │   ├── image-generation.md
 │   ├── license-compliance.md
 │   ├── workflow-recipes.md
-│   └── docker-sidecars.md                CPU-only container sidecars
+│   ├── docker-sidecars.md                CPU-only container sidecars
+│   └── third-party-evaluation.md         measured, pending upstream
 ├── voice_runtime/                        local VibeVoice TTS adapter
 │   ├── RUNBOOK.md                        runtime, model, and usage guide
 │   ├── client.py                         script parsing and HF model interface

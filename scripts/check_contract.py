@@ -26,16 +26,8 @@ _spec = importlib.util.spec_from_file_location(
 doctor = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(doctor)
 
-MARKDOWN_SUFFIX = ".md"
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)#]+?)\)")
 PATH_PATTERN = re.compile(r"`([\w][\w./-]*\.(?:py|sh|md|json|txt|lock))`")
-
-
-def tracked_files(suffix: str) -> list[Path]:
-    result = subprocess.run(
-        ["git", "ls-files", f"*{suffix}"], cwd=ROOT, capture_output=True,
-        text=True, check=True)
-    return [ROOT / line for line in result.stdout.splitlines() if line]
 
 
 def git_ignored(root: Path, candidates: list[str]) -> set[str]:
@@ -56,11 +48,15 @@ def git_ignored(root: Path, candidates: list[str]) -> set[str]:
 
 
 def markdown_files(root: Path) -> list[Path]:
-    """Documents to inspect: the tracked ones for this repository, or everything
-    under ``root`` when a caller passes a different tree."""
-    if root == ROOT:
-        return tracked_files(MARKDOWN_SUFFIX)
-    skip = {"venv", "node_modules", ".git", "ComfyUI", "__pycache__"}
+    """Every document under ``root``, including ones not yet committed.
+
+    Enumerating tracked files only would silently skip a new document until it
+    was committed, which is exactly when the mistake is easiest to make. The
+    check therefore walks the working tree and skips the directories that hold
+    checkouts and generated output.
+    """
+    skip = {"venv", "node_modules", ".git", "ComfyUI", "__pycache__",
+            "outputs", "state", ".check-venv", ".local-check-venv"}
     return sorted(p for p in root.rglob("*.md")
                   if not any(part in skip for part in p.parts))
 
