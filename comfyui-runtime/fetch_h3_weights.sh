@@ -33,7 +33,7 @@ REVISION="4cc1d817b6184899b41293954329f576cb5ae86b"
 
 # Use huggingface-cli when present; otherwise pip install it (it's tiny).
 if ! python -c "import huggingface_hub" 2>/dev/null; then
-  uv pip install "huggingface_hub[cli]>=0.24"
+  uv pip install "huggingface_hub>=0.24"
 fi
 
 MODEL_DIR="ComfyUI/models"

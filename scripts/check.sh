@@ -55,7 +55,8 @@ else
   "$UV_BIN" pip install --python "$CHECK_VENV/bin/python" -r requirements-core.txt >/dev/null
   if "$CHECK_VENV/bin/python" -m unittest \
       tests.test_forge_runtime tests.test_masked_composition \
-      tests.test_vibevoice tests.test_doctor 2>&1 | tail -3; then
+      tests.test_vibevoice tests.test_doctor tests.test_job_queue \
+      tests.test_bootstrap_guards 2>&1 | tail -3; then
     :
   else
     fail "unit tests"

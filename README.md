@@ -201,8 +201,13 @@ postward-local-media-gen/
 │   ├── submit_rtx_vsr.py
 │   ├── run_hogwarts_shots.py
 │   └── workflows/
-├── tests/                                CPU-only adapter/queue contract tests
-│   └── test_masked_composition.py        protected-pixel behavior tests
+├── tests/                                CPU-only contract tests, no GPU needed
+│   ├── test_forge_runtime.py             payloads, VRAM guard, provenance
+│   ├── test_masked_composition.py        protected-pixel behavior
+│   ├── test_vibevoice.py                 storage, licence gate, language limits
+│   ├── test_doctor.py                    capability probes, locks, drift
+│   ├── test_job_queue.py                 GPU lease exclusivity, orphan recovery
+│   └── test_bootstrap_guards.py          licence gate, version guards
 ```
 
 ## Hardware profiles

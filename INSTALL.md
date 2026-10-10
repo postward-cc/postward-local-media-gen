@@ -130,8 +130,14 @@ Installing `requirements-core.txt` is part of the test step, which keeps that
 file honest: if it stops resolving, the check fails rather than the next
 workstation.
 
+The suite covers the contracts a user depends on rather than internal wiring:
+the GPU lease actually excludes a second inference job, orphaned jobs are
+recovered, the H3 license gate refuses a download without the acknowledgement,
+and an unknown ComfyUI version stops the bootstrap instead of silently
+resolving another release's dependencies.
+
 CI deliberately does not attempt generation. A hosted runner has no NVIDIA GPU,
-and a test that cannot run is worse than no test.
+and a test that never runs is worse than no test.
 
 ## Options
 
