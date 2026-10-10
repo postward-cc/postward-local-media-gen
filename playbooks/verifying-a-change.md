@@ -10,6 +10,7 @@ No GPU, no model weights, no running services. Roughly two seconds.
 |---|---|
 | `bash -n` on every tracked shell script | Typos that only appear at runtime |
 | `python -m json.tool skill.json` | A malformed contract an agent would read |
+| `scripts/check_contract.py` | A tool probed but not declared, or vice versa; a playbook listed but missing; a document linking to a file that was renamed |
 | `doctor.py verify-locks` | A requirements file edited without relocking; a torch build without `+cu128`; a ComfyUI snapshot that no longer matches the pinned version |
 | Unit suite on the pinned interpreter | Contract regressions. Installing `requirements-core.txt` is part of this step, so the file must keep resolving |
 | `doctor.py` JSON shape | An import break or a removed key that tooling depends on |

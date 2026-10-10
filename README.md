@@ -183,7 +183,12 @@ postward-local-media-gen/
 ├── CONTEXT.md                            domain glossary
 ├── README.md                             this file
 ├── docs/adr/                             architectural decisions
-│   └── 0001-skill-primary-interface.md
+│   ├── 0001-skill-primary-interface.md
+│   ├── 0002-local-process-runtime.md      why inference is not containerized
+│   ├── 0003-uv-managed-interpreter.md     why uv owns the interpreter
+│   ├── 0004-hash-verified-locks.md        why locks, and why CUDA tag is checked
+│   ├── 0005-tool-preference-order.md      why a declared order for tools
+│   └── 0006-ci-scope.md                   what CI can honestly run
 ├── .github/workflows/ci.yml              runs scripts/check.sh, offline only
 ├── playbooks/                            task guides for changing this repo
 │   ├── README.md                         index and source-of-truth map
@@ -217,6 +222,7 @@ postward-local-media-gen/
 │   ├── job_queue.py
 │   ├── relock.sh                         regenerates the runtime locks
 │   ├── check.sh                          offline gate; CI runs exactly this
+│   ├── check_contract.py                 manifest, probes and docs must agree
 │   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
 ├── comfyui-runtime/                      ComfyUI implementation adapter
 │   ├── RUNBOOK.md

@@ -35,6 +35,14 @@ for json in skill.json; do
   fi
 done
 
+step "repository contract"
+if python3 scripts/check_contract.py >/tmp/check-contract.json; then
+  printf 'ok   manifest, probes and documentation agree\n'
+else
+  cat /tmp/check-contract.json
+  fail "repository contract"
+fi
+
 step "committed locks"
 if python3 scripts/doctor.py verify-locks >/tmp/verify-locks.json; then
   printf 'ok   locks match their inputs and carry the CUDA build tag\n'
@@ -56,7 +64,7 @@ else
   if "$CHECK_VENV/bin/python" -m unittest \
       tests.test_forge_runtime tests.test_masked_composition \
       tests.test_vibevoice tests.test_doctor tests.test_job_queue \
-      tests.test_bootstrap_guards 2>&1 | tail -3; then
+      tests.test_bootstrap_guards tests.test_check_contract 2>&1 | tail -3; then
     :
   else
     fail "unit tests"

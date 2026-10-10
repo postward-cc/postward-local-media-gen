@@ -43,7 +43,11 @@ Verify it before moving on:
 
 ```bash
 python scripts/doctor.py | python -c "import json,sys;print(json.load(sys.stdin)['external_tools'])"
+python scripts/check_contract.py   # probe and manifest must agree
 ```
+
+Run `check_contract.py` last: it fails if you added the probe without adding
+the id to `skill.json`, or the reverse.
 
 ## Wire it into the skill
 
