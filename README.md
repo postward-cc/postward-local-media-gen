@@ -165,6 +165,9 @@ concern, so an agent does not have to guess.
 ./scripts/check_local.sh  # the above plus the local-only ComfyUI checks
 ```
 
+Changes go through a pull request rather than a direct push, so the gate runs
+before `main` changes.
+
 
 ## Repository layout
 
