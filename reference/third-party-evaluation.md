@@ -20,12 +20,17 @@ scratch, and so a future change does not re-litigate it without new evidence.
 | Prebuilt `*-cli` assets are macOS-universal only. `pdfcraft` is the sole exception with Linux x86_64 and aarch64 tarballs | release assets for photocraft v0.6.0, filmcraft v0.5.0, vectorcraft v0.8.0, lightcraft v0.5.0, effectcraft v0.7.0, designcraft v0.5.0 |
 | The desktop app is available for Linux as AppImage, `.deb`, `.rpm`, tarball and Flatpak — but the CLI binary is not in those packages | v0.6.0 release assets |
 | The repository `Dockerfile` builds the WASM web bundle behind nginx. It is a community-maintained self-hosting recipe for the browser build, not a CLI image | `Dockerfile`, header comment |
-| `photocraft-cli` exposes `convert`, `info`, `run`, `batch`, `commands`, `mcp` and `serve` over one registry of 500+ commands shared with the UI | README → Built for agents; `docs/development.md` |
-| `photocraft-cli mcp` already exists, built on the Rust MCP SDK, headless or bridged to a running app | `docs/mcp.md` |
-| Filesystem authority fails closed: without `--automation-read-root` / `--automation-write-root` there is none. The environment-variable equivalents do **not** apply to headless `mcp` or `serve` | `docs/mcp.md`, `docs/control-protocol.md` |
-| The MCP surface is not a subset of the control protocol; `control_call {method, params}` is the escape hatch that reaches the remainder | `docs/control-protocol.md`, MCP bridge mapping table |
-| Export and the test suite use the CPU compositor; wgpu is the canvas of the interactive UI | `docs/development.md` |
+| `photocraft-cli` exposes `convert`, `info`, `run`, `batch`, `commands`, `mcp` and `serve` over one registry of 500+ commands shared with the UI | README → Built for agents; [docs/development.md][dev] |
+| `photocraft-cli mcp` already exists, built on the Rust MCP SDK, headless or bridged to a running app | [docs/mcp.md][mcp] |
+| Filesystem authority fails closed: without `--automation-read-root` / `--automation-write-root` there is none. The environment-variable equivalents do **not** apply to headless `mcp` or `serve` | [docs/mcp.md][mcp], [docs/control-protocol.md][control] |
+| The MCP surface is not a subset of the control protocol; `control_call {method, params}` is the escape hatch that reaches the remainder | [docs/control-protocol.md][control], MCP bridge mapping table |
+| Export and the test suite use the CPU compositor; wgpu is the canvas of the interactive UI | [docs/development.md][dev] |
 | Building from source needs Rust 1.95 or newer over a 24-crate workspace | `Cargo.toml`, `Dockerfile` |
+
+Document paths above are in the PhotoCraft repository, not this one:
+[mcp]: https://github.com/storytold/photocraft/blob/main/docs/mcp.md
+[control]: https://github.com/storytold/photocraft/blob/main/docs/control-protocol.md
+[dev]: https://github.com/storytold/photocraft/blob/main/docs/development.md
 
 ## Not measured
 

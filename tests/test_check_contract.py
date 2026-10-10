@@ -56,6 +56,12 @@ class MarkdownProblemTests(unittest.TestCase):
 
         self.assertEqual(check_contract.markdown_problems(root), {})
 
+    def test_document_not_yet_committed_is_still_inspected(self):
+        """Enumerating tracked files only would skip a brand new document."""
+        root = self._root({"README.md": "see [gone](nope/file.md)\n"})
+
+        self.assertIn("README.md", check_contract.markdown_problems(root))
+
 
 class ManifestProblemTests(unittest.TestCase):
     def _root(self, manifest: dict) -> Path:
