@@ -126,6 +126,17 @@ real speaker reference. Details: [`voice_runtime/RUNBOOK.md`](voice_runtime/RUNB
 and [`reference/license-compliance.md`](reference/license-compliance.md).
 
 
+## Other local tools
+
+The adapters above are the supported path. For work they do not cover, the
+skill points to local headless tools — ImageMagick, libvips, G'MIC, OpenImageIO,
+GIMP, Inkscape, qpdf, Ghostscript, ffmpeg, darktable-cli, rawtherapee-cli and
+ExifTool — always in preference to a hosted service. CPU-only steps may run
+alongside a queued inference job. A container may be used for such a step when
+the user runs Docker; inference itself is never containerized. Details:
+[`reference/docker-sidecars.md`](reference/docker-sidecars.md).
+
+
 ## Repository layout
 
 ```text
@@ -143,7 +154,8 @@ postward-local-media-gen/
 │   ├── concurrency.md
 │   ├── image-generation.md
 │   ├── license-compliance.md
-│   └── workflow-recipes.md
+│   ├── workflow-recipes.md
+│   └── docker-sidecars.md                CPU-only container sidecars
 ├── voice_runtime/                        local VibeVoice TTS adapter
 │   ├── RUNBOOK.md                        runtime, model, and usage guide
 │   ├── client.py                         script parsing and HF model interface

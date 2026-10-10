@@ -190,6 +190,40 @@ the gate. See `reference/license-compliance.md`.
   SHA-256 does not match the job manifest.
 - Concurrent Forge/H3 use: wait for the other engine or ask the user before
   stopping a known service; never kill unrelated GPU processes.
+- Missing tool: name the exact missing program or container image, the step
+  that needs it, and the install path. Do not silently substitute an online
+  service for a local step.
+
+## Tooling alternatives
+
+The adapters in this repository are the supported path. When a requested
+operation falls outside them, or when a required local tool is absent, prefer a
+local headless tool over a hosted service:
+
+| Need | Local headless option |
+|---|---|
+| Raster conversion, resize, montage, metadata | ImageMagick, GraphicsMagick |
+| Fast batch raster processing | libvips (`vips`) |
+| Filters and 2D image processing | G'MIC (`gmic`) |
+| EXR/ACES/OCIO pipeline work | OpenImageIO (`oiiotool`) |
+| Programmatic raster editing | GIMP (`gimp-console` with Script-Fu) |
+| Vector rendering to raster/PDF | Inkscape |
+| PDF combine, split, encrypt, inspect | qpdf, ghostscript, mutool |
+| Video frame extraction and encoding | ffmpeg |
+| RAW development and photo inspection | darktable-cli, rawtherapee-cli |
+| Asset metadata read/write | exiftool |
+
+Two rules govern their use. First, an alternative is a fallback for work this
+repository does not perform, not a replacement for a working adapter; changing
+the engine changes the output contract and the provenance manifest. Second, an
+alternative must keep user files on the workstation: do not route inputs or
+outputs through a hosted service, and do not upload assets to obtain a tool.
+
+CPU-only alternatives may run concurrently with inference, as described in
+Concurrent requests. Never run inference itself — Forge, ComfyUI/H3, VSR or
+speech — inside a container: `FORGE_HOME`, the shared GPU lock and the local
+venv installs are the supported topology. See `reference/docker-sidecars.md`
+for containerized CPU sidecars, mount layout and image pinning.
 
 ## Output contract
 
@@ -212,3 +246,12 @@ Every completed generation returns a JSON manifest. A local image job includes:
 
 Video jobs also return duration/audio metadata. State the final output path;
 never ask the user to search through Forge or ComfyUI history manually.
+
+## Further reading
+
+`reference/image-generation.md` for image configuration and the adapter
+contract; `reference/hardware-profiles.md` for VRAM profiles;
+`reference/concurrency.md` for the GPU lock and queue;
+`reference/license-compliance.md` before downloading licensed assets;
+`reference/workflow-recipes.md` for end-to-end sequences; and
+`reference/docker-sidecars.md` when a CPU-only step needs a container.
