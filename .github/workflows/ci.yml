@@ -1,0 +1,34 @@
+name: CI
+
+# Every check runs offline and CPU-only on purpose. This repository generates
+# media on a consumer NVIDIA GPU; a hosted runner cannot do that, and a test
+# that never runs is worse than no test. The gate covers what a runner can
+# honestly verify: the pinned interpreter, the repository's dependency, the
+# shell and JSON contracts, the committed locks, and the unit suite.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Run offline checks
+        run: ./scripts/check.sh

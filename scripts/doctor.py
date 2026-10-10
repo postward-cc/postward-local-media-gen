@@ -194,6 +194,77 @@ def environment_drift(lock: Path, python: Path) -> dict:
     return report
 
 
+def version_matches(pin: str, locked: str) -> bool:
+    """Whether a locked version satisfies a pin, ignoring any CUDA local tag.
+
+    ``torch==2.11.0`` and ``torch==2.11.0+cu128`` are the same release; the
+    local tag records which wheel the PyTorch index served, not a different
+    version. A pin that itself carries a local tag must match exactly.
+    """
+    if pin == locked:
+        return True
+    if "+" in pin:
+        return False
+    return locked.split("+", 1)[0] == pin
+
+
+def lock_satisfies_inputs(lock_text: str, input_text: str) -> list[str]:
+    """Report explicit pins in a requirements file that the lock does not honour.
+
+    Only ``name==version`` pins can be checked without resolving anything, so
+    unpinned inputs are deliberately not judged here: a stale lock is caught
+    when a pin is edited and the lock is not regenerated.
+    """
+    pins = lock_pins(lock_text)
+    problems = []
+    for line in input_text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        match = re.match(r"^([A-Za-z0-9._-]+)==([^\s;\\]+)", line)
+        if not match:
+            continue
+        name = match.group(1).lower().replace("_", "-")
+        locked = pins.get(name)
+        if locked is None:
+            problems.append(f"{match.group(1)}=={match.group(2)} is absent from the lock")
+        elif not version_matches(match.group(2), locked):
+            problems.append(
+                f"{match.group(1)} is pinned to {match.group(2)} but the lock has {locked}"
+            )
+    return problems
+
+
+#: Inputs that feed each lock, paired for ``doctor.py verify-locks``.
+LOCK_INPUTS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("requirements-comfyui.lock", ("requirements-core.txt",
+                                   "requirements-comfyui-extras.txt")),
+    ("requirements-vibevoice.lock", ("requirements-vibevoice.txt",)),
+)
+
+
+def verify_locks(root: Path = ROOT) -> dict:
+    """Check every committed lock: CUDA build tag and freshness against inputs."""
+    report = {}
+    for lock_name, inputs in LOCK_INPUTS:
+        lock = root / lock_name
+        entry: dict = {"inputs": list(inputs)}
+        if not lock.exists():
+            entry["status"] = "no-lock"
+            report[lock_name] = entry
+            continue
+        text = lock.read_text()
+        problems = cuda_tag_problems(text)
+        for input_name in inputs:
+            path = root / input_name
+            if not path.exists():
+                problems.append(f"{input_name} is missing")
+                continue
+            problems.extend(lock_satisfies_inputs(text, path.read_text()))
+        entry["problems"] = problems
+        entry["status"] = "ok" if not problems else "stale"
+        report[lock_name] = entry
+    return report
+
+
 def check_lock(path: str) -> int:
     """``doctor.py check-lock <file>``: exit non-zero on an unusable lock."""
     try:
@@ -318,6 +389,10 @@ def main() -> int:
             print("usage: doctor.py check-lock <requirements.lock>")
             return 2
         return check_lock(sys.argv[2])
+    if sys.argv[1:2] == ["verify-locks"]:
+        report = verify_locks()
+        print(json.dumps(report, indent=2))
+        return 1 if any(entry["status"] != "ok" for entry in report.values()) else 0
     gpu_query = command(
         "nvidia-smi", "--query-gpu=name,memory.total,memory.free,driver_version",
         "--format=csv,noheader,nounits",

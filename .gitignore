@@ -57,3 +57,6 @@ reference/__pycache__/
 forge_runtime/outputs/
 voice_runtime/outputs/
 docs/__pycache__/
+
+# offline check scratch environment
+.check-venv/

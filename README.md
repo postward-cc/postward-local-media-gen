@@ -165,6 +165,7 @@ postward-local-media-gen/
 ├── README.md                             this file
 ├── docs/adr/                             architectural decisions
 │   └── 0001-skill-primary-interface.md
+├── .github/workflows/ci.yml              runs scripts/check.sh, offline only
 ├── reference/                            model-facing operational references
 │   ├── hardware-profiles.md
 │   ├── concurrency.md
@@ -188,6 +189,7 @@ postward-local-media-gen/
 │   ├── compose_masked_edit.py            CPU-only masked image compositor
 │   ├── job_queue.py
 │   ├── relock.sh                         regenerates the runtime locks
+│   ├── check.sh                          offline gate; CI runs exactly this
 │   ├── bootstrap_vibevoice.sh             optional TTS setup under XDG data
 ├── comfyui-runtime/                      ComfyUI implementation adapter
 │   ├── RUNBOOK.md

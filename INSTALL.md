@@ -89,6 +89,24 @@ broken one, and the two are reported separately:
 python scripts/doctor.py            # includes vibevoice_environment
 ```
 
+## Checks before pushing
+
+`./scripts/check.sh` runs everything that needs no GPU, no network and no
+model weights: shell syntax, JSON validity, lock verification, the unit suite
+on the pinned interpreter, and the shape of the doctor's JSON report. CI runs
+exactly this script, so the local gate and the remote gate cannot drift.
+
+```bash
+./scripts/check.sh
+```
+
+Installing `requirements-core.txt` is part of the test step, which keeps that
+file honest: if it stops resolving, the check fails rather than the next
+workstation.
+
+CI deliberately does not attempt generation. A hosted runner has no NVIDIA GPU,
+and a test that cannot run is worse than no test.
+
 ## Options
 
 ```bash

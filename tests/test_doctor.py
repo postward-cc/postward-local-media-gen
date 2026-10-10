@@ -189,6 +189,54 @@ class LockDriftTests(unittest.TestCase):
         self.assertEqual(report["status"], "unreadable-environment")
 
 
+class LockFreshnessTests(unittest.TestCase):
+    LOCK = "torch==2.11.0+cu128 \\\n    --hash=sha256:aa\npillow==12.3.0\n"
+
+    def test_cuda_local_tag_satisfies_a_plain_pin(self):
+        self.assertEqual(
+            doctor.lock_satisfies_inputs(self.LOCK, "torch==2.11.0\n"), []
+        )
+
+    def test_a_pin_carrying_a_local_tag_must_match_exactly(self):
+        problems = doctor.lock_satisfies_inputs(self.LOCK, "torch==2.11.0+cu126\n")
+
+        self.assertEqual(len(problems), 1)
+        self.assertIn("cu126", problems[0])
+
+    def test_edited_pin_is_reported_as_stale(self):
+        problems = doctor.lock_satisfies_inputs(self.LOCK, "pillow==11.0.0\n")
+
+        self.assertEqual(
+            problems, ["pillow is pinned to 11.0.0 but the lock has 12.3.0"]
+        )
+
+    def test_package_missing_from_the_lock_is_reported(self):
+        problems = doctor.lock_satisfies_inputs(self.LOCK, "apenas-isto-aqui==1.0\n")
+
+        self.assertEqual(
+            problems, ["apenas-isto-aqui==1.0 is absent from the lock"]
+        )
+
+    def test_unpinned_input_is_not_judged_offline(self):
+        problems = doctor.lock_satisfies_inputs(self.LOCK, "accelerate\nsoundfile\n")
+
+        self.assertEqual(problems, [])
+
+    def test_comments_and_blank_lines_are_ignored(self):
+        problems = doctor.lock_satisfies_inputs(
+            self.LOCK, "# a comment\n\npillow==12.3.0  # trailing\n"
+        )
+
+        self.assertEqual(problems, [])
+
+    def test_repository_locks_are_current(self):
+        report = doctor.verify_locks()
+
+        for lock, entry in report.items():
+            with self.subTest(lock=lock):
+                self.assertEqual(entry["status"], "ok", entry.get("problems"))
+
+
 class CudaTagCheckTests(unittest.TestCase):
     def test_lock_without_cuda_build_is_rejected(self):
         lock = "torch==2.14.1 \\\n    --hash=sha256:aa\ntorchvision==0.29.1\ntorchaudio==2.11.0\n"
